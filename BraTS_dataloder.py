@@ -130,8 +130,8 @@ if __name__ == "__main__":
     if len(labels) != len(imgs):
         print("missing label or image")
     
-    print("pass")
-    sys.exit()
+    #print("pass")
+    #sys.exit()
     #save_object(ROIs, "Z:/Simon/data/BraTS/imgs_2516proj.p")
     save_object(imgs, "Z:/Simon/data/BraTS/imgs_2516proj.p")
     save_object(labels, "Z:/Simon/data/BraTS/label_2516proj.p")
