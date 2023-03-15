@@ -4,14 +4,17 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 '''
-Encoder first, no attention at this point, use strided convolutions to downsample, encode to latent space
+@ author: Simon Zhou
+
+Encoder first, no attention at this point, use strided convolutions to downsample, encode to latent space, decouple with the decoder
 
 latent space feed to transformer, model long-term dependencies, global attention
 
 Decoder has local attention, attention is after the skip connections at each level, use upsample and convolutions to upsample, decode to segmentation mask
 
-
+auxiliary decoder: reconstruct the input image
 '''
 
 def init_weights(net, init_type='normal', gain=0.02):
@@ -120,7 +123,7 @@ class Attention_block(nn.Module):
 
 
 class Encoder(nn.Module):
-    # https://github.com/LeeJunHyun/Image_Segmentation/blob/db34de21767859e035aee143c59954fa0d94bbcd/network.py
+    # code ref: https://github.com/LeeJunHyun/Image_Segmentation/blob/db34de21767859e035aee143c59954fa0d94bbcd/network.py
     def __init__(self):
         super(Encoder).__init__()
         
@@ -153,6 +156,7 @@ class Encoder(nn.Module):
         x = self.down4(x)
         x = self.conv5(x) # x should be 1024x8x8 in latent space
         
+        # return concat layers for connecting to decoder
         return x, (concat1, concat2, concat3, concat4)
 
 
