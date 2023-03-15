@@ -120,6 +120,7 @@ class Attention_block(nn.Module):
 
 
 class Encoder(nn.Module):
+    # https://github.com/LeeJunHyun/Image_Segmentation/blob/db34de21767859e035aee143c59954fa0d94bbcd/network.py
     def __init__(self):
         super(Encoder).__init__()
         
@@ -150,7 +151,7 @@ class Encoder(nn.Module):
         # skip-connection 4
         concat4 = x
         x = self.down4(x)
-        x = self.conv5(x) # x should be 1024x8x8
+        x = self.conv5(x) # x should be 1024x8x8 in latent space
         
         return x, (concat1, concat2, concat3, concat4)
 
