@@ -4,5 +4,5 @@ TODO List
 
 - [ ] Preprocessing
 - [ ] Loss function: Dice loss implementation
-- [ ] Transformer model, decoder
+- [x] Transformer model, decoder
 - [ ] Attention mechanism revisit and revise
