@@ -1,6 +1,6 @@
 # Loss functions for the project
 
-# Author: Reacher Z., last modify Nov. 18, 2022
+# Author: Simon, last modify Nov. 18, 2022
 
 """
 Change log:
