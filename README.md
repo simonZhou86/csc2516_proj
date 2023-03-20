@@ -6,3 +6,5 @@ TODO List
 - [ ] Loss function: Dice loss implementation
 - [x] Transformer model, decoder
 - [ ] Attention mechanism revisit and revise
+- [ ] training and test scripts
+- [ ] baseline model(s)
