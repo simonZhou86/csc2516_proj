@@ -44,7 +44,6 @@ def init_weights(net, init_type='normal', gain=0.02):
 
 
 class GroupNorm(nn.Module):
-
     def __init__(self, channels):
         super(GroupNorm, self).__init__()
         self.gn = nn.GroupNorm(num_groups=32,
@@ -86,7 +85,6 @@ class Norm_layer(nn.Module):
 
 
 class single_conv(nn.Module):
-
     def __init__(self, ch_in, ch_out, ks, use_relu=False):
         super(single_conv, self).__init__()
         self.use_relu = use_relu
@@ -228,7 +226,6 @@ class Non_local_Attn(nn.Module):
 
 
 class ChannelGate(nn.Module):
-
     def __init__(self,
                  gate_channels,
                  reduction_ratio=16,
@@ -266,7 +263,6 @@ class ChannelGate(nn.Module):
 
 
 class ChannelPool(nn.Module):
-
     def forward(self, x):
         return torch.cat(
             (torch.max(x, 1)[0].unsqueeze(1), torch.mean(x, 1).unsqueeze(1)),
@@ -274,7 +270,6 @@ class ChannelPool(nn.Module):
 
 
 class SpatialGate(nn.Module):
-
     def __init__(self):
         super(SpatialGate, self).__init__()
         kernel_size = 7
@@ -345,7 +340,6 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-
     def __init__(self):
         # axuiliary decoder for reconstruction task
         super(Decoder).__init__()
@@ -395,7 +389,6 @@ class Decoder(nn.Module):
 
 # transformer bottleneck
 class Transformer(nn.Module):
-
     def __init__(self,
                  num_layers=2,
                  d_model=1024,
@@ -429,7 +422,6 @@ class Transformer(nn.Module):
 
 # deocder - segmentation
 class Segmentor(nn.Module):
-
     def __init__(self, num_cls):
         # segmentation head to produce segmentation map
         super(Decoder).__init__()
@@ -491,10 +483,11 @@ class Segmentor(nn.Module):
         return x
 
 
-class MTUnet(nn.Module):
+class MTUNet(nn.Module):
+    # Multi-task Transformer U-Net
 
-    def __init__(self, num_cls):
-        super(MTUnet, self).__init__()
+    def __init__(self, num_cls=1):
+        super(MTUNet, self).__init__()
         self.encoder = Encoder()
         self.transformer = Transformer()
         self.decoder = Decoder()
