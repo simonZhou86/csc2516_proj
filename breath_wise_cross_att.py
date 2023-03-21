@@ -9,63 +9,6 @@ Author: Simon
 Breath-wise cross attention, attention learned locally and dialtion leanred with a larger receptive field
 '''
 
-class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, bias=False) -> None:
-        super(MultiHeadSelfAttention, self).__init__()
-
-        self.mha = nn.MultiheadAttention(embed_dim, num_heads, bias=bias, batch_first=True)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # b, c, h, w tensor
-        b, c, h, w = x.size()
-        x = x.permute(0, 2, 3, 1).view((b, h * w, c))
-        x, _ = self.mha(x, x, x, need_weights=False)
-        return x.view((b, h, w, c)).permute(0, 3, 1, 2)
-
-class MultiHeadCrossAttention(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, channel_S: int, channel_Y: int, bias=False) -> None:
-        super(MultiHeadCrossAttention, self).__init__()
-
-        self.conv_S = nn.Sequential(
-            nn.MaxPool2d(2),
-            nn.Conv2d(channel_S, channel_S, 1, bias=bias),
-            nn.BatchNorm2d(channel_S),
-            nn.ReLU()
-        )
-
-        self.conv_Y = nn.Sequential(
-            nn.Conv2d(channel_Y, channel_S, 1, bias=bias),
-            nn.BatchNorm2d(channel_S),
-            nn.ReLU()
-        )
-
-        self.mha = nn.MultiheadAttention(embed_dim, num_heads, bias=bias, batch_first=True)
-
-        self.upsample = nn.Sequential(
-            nn.Conv2d(channel_S, channel_S, 1, bias=bias).apply(lambda m: nn.init.xavier_uniform_(m.weight.data)),
-            nn.BatchNorm2d(channel_S),
-            nn.Sigmoid(),
-            nn.ConvTranspose2d(channel_S, channel_S, 2, 2, bias=bias)
-        )
-
-    def forward(self, s: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        s_enc = s
-        s = self.conv_S(s)
-        y = self.conv_Y(y)
-
-        b, c, h, w = s.size()
-        s = s.permute(0, 2, 3, 1).view((b, h * w, c))
-
-        b, c, h, w = y.size()
-        y = y.permute(0, 2, 3, 1).view((b, h * w, c))
-
-        y, _ = self.mha(y, y, s, need_weights=False)
-        y = y.view((b, h, w, c)).permute(0, 3, 1, 2)
-        
-        y = self.upsample(y)
-
-        return torch.mul(y, s_enc)
-
 
 class BreathWise(nn.Module):
     # Breath-Wise convolution block through dilations
@@ -172,7 +115,7 @@ class BreathWiseCrossAttention(nn.Module):
         
         y = torch.mul(y, s_enc) # get attention features
         
-        print(y.shape, y_orig.shape)
+        print(y.shape, y_orig.shape) # debug, check the shape
         
         y = self.bw_block(y + y_orig) # breath-wise block
         
