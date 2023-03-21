@@ -7,13 +7,14 @@ import time
 from utils import AverageMeter
 from metrics import dice, iou
 import os
+from loss import loss_func
+from torchvision.models import vgg16_bn
 
+vgg = vgg16_bn(pretrained=True)
 
-def train_epoch(args, model, train_loader, optimizer, scheduler, ctiterion_seg, criterion_recon, device, epoch):
+def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
-    losses_seg = AverageMeter()
-    losses_recon = AverageMeter()
     losses = AverageMeter()
     dice_scores = AverageMeter()
 
@@ -29,12 +30,12 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, ctiterion_seg, 
         optimizer.zero_grad()
 
         pred_seg, pred_recon = model(img)
-        loss_seg = ctiterion_seg(pred_seg, target)
-        loss_recon = criterion_recon(pred_recon, img)
-        loss = loss_seg + args.recon_weight * loss_recon
+ 
+        loss = loss_func(vgg, pred_seg, pred_recon, target, 
+                         args.c1, args.c2, 
+                         args.lambda1, args.lambda2, 
+                         args.block_idx, device)
         
-        losses_seg.update(loss_seg.data[0], img.size(0))
-        losses_recon.update(loss_recon.data[0], img.size(0))
         losses.update(loss.data[0], img.size(0))
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
@@ -59,13 +60,9 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, ctiterion_seg, 
                         "train_batch_time": batch_time.val})
             
     wandb.log({"train_loss_epoch": losses.avg,
-                "train_loss_seg_epoch": losses_seg.avg,
-                "train_loss_recon_epoch": losses_recon.avg,
                 "train_dice_epoch": dice_scores.avg,})
 
-def test_epoch(args, model, val_loader, ctiterion_seg, criterion_recon, device, epoch):
-    losses_seg = AverageMeter()
-    losses_recon = AverageMeter()
+def test_epoch(args, model, val_loader, device, epoch):
     losses = AverageMeter()
     dice_scores = AverageMeter()
 
@@ -75,12 +72,12 @@ def test_epoch(args, model, val_loader, ctiterion_seg, criterion_recon, device, 
         data, target = data.to(device), target.to(device)
 
         pred_seg, pred_recon = model(img)
-        loss_seg = ctiterion_seg(pred_seg, target)
-        loss_recon = criterion_recon(pred_recon, img)
-        loss = loss_seg + args.recon_weight * loss_recon
+
+        loss = loss_func(vgg, pred_seg, pred_recon, target, 
+                         args.c1, args.c2, 
+                         args.lambda1, args.lambda2, 
+                         args.block_idx, device)
         
-        losses_seg.update(loss_seg.data[0], img.size(0))
-        losses_recon.update(loss_recon.data[0], img.size(0))
         losses.update(loss.data[0], img.size(0))
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
@@ -92,8 +89,6 @@ def test_epoch(args, model, val_loader, ctiterion_seg, criterion_recon, device, 
                     epoch, batch_idx, len(val_loader), loss=losses, dice=dice_scores))
             
     wandb.log({"val_loss_epoch": losses.avg,
-                "val_loss_seg_epoch": losses_seg.avg,
-                "val_loss_recon_epoch": losses_recon.avg,
                 "val_dice_epoch": dice_scores.avg,})
         
     return dice_scores.avg
@@ -119,11 +114,6 @@ def train(args):
     model = torch.nn.DataParallel(model).to(device)
     wandb.watch(model)
 
-    ctiterion_seg = torch.nn.CrossEntropyLoss()
-    criterion_recon = torch.nn.MSELoss()
-    ctiterion_seg.to(device)
-    criterion_recon.to(device)
-
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
 
@@ -131,12 +121,10 @@ def train(args):
         os.makedirs(args.save_dir)
 
     for epoch in range(args.epochs):
-        train_epoch(args, model, train_loader, optimizer, scheduler, ctiterion_seg, criterion_recon, device, epoch)
-        test_epoch(args, model, val_loader, ctiterion_seg, criterion_recon, device, epoch)
+        train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch)
+        test_epoch(args, model, val_loader, device, epoch)
 
         torch.save(model.state_dict(), os.path.join(args.save_dir, 'model_{}.pth'.format(epoch)))
- 
-
 
 def test(args):
     test_dataset = None # TODO: create dataset
@@ -150,12 +138,7 @@ def test(args):
     model = torch.nn.DataParallel(model).to(device)
     model.load_state_dict(torch.load(args.model_path))
 
-    ctiterion_seg = torch.nn.CrossEntropyLoss()
-    criterion_recon = torch.nn.MSELoss()
-    ctiterion_seg.to(device)
-    criterion_recon.to(device)
-
-    dice_score = test_epoch(args, model, test_loader, ctiterion_seg, criterion_recon, device, 0)
+    dice_score = test_epoch(args, model, test_loader, device, 0)
     print('Test result:\nDice score: {}'.format(dice_score))
 
 
@@ -172,6 +155,12 @@ if __name__=='__main__':
     parser.add_argument('--log_interval', type=int, default=10, help='number of batches between logging')
     parser.add_argument('--save_dir', type=str, default='checkpoints', help='directory to save the model')
     parser.add_argument('--viz_wandb', type=str, default=None, help='wandb entity to log to')
+    parser.add_argument('--c1', type=float, default=1., help='weight of segmentation loss')
+    parser.add_argument('--c2', type=float, default=1., help='weight of reconstruction loss')
+    parser.add_argument('--lambda1', type=float, default=1., help='weight of img_grad_dif loss')
+    parser.add_argument('--lambda2', type=float, default=1., help='weight of percep loss')
+    parser.add_argument('--block_idx', type=int, nargs='+', default=[0, 1, 2],
+                         help='VGG block indices to use for style loss')
     args = parser.parse_args()
     if args.train:
         wandb.init(name="Train-MTUNet",

@@ -222,7 +222,7 @@ def perceptual_loss(vgg, predicted, target, block_idx, device):
     return p_loss(predicted, target)
 
 
-def loss_func(vgg, predicted, target, c1, c2, lambda1, lambda2, block_idx, device):
+def loss_func(vgg, predicted, reconstructed, target, c1, c2, lambda1, lambda2, block_idx, device):
     """
     final loss function:
     weighted sum of main loss and auxiliary loss
@@ -230,9 +230,9 @@ def loss_func(vgg, predicted, target, c1, c2, lambda1, lambda2, block_idx, devic
     img_grad_loss = grad_loss(device)
     #L1_charbonnier = L1_Charbonnier_loss()
     #reg_loss = L1_charbonnier(predicted, target)
-    reg_loss = mse_loss(predicted, target)
-    img_grad_dif = img_grad_loss(predicted, target)
-    percep = perceptual_loss(vgg, predicted, target, block_idx, device)
+    reg_loss = mse_loss(reconstructed, target)
+    img_grad_dif = img_grad_loss(reconstructed, target)
+    percep = perceptual_loss(vgg, reconstructed, target, block_idx, device)
     dice = GeneralizedSoftDiceLoss()
     main_dice_loss = dice(predicted, target)
     bce = BCELoss()
