@@ -1,9 +1,13 @@
-# cross hash attention
+# breath wise cross attention
 import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
+'''
+Author: Simon
+Breath-wise cross attention, attention learned locally and dialtion leanred with a larger receptive field
+'''
 
 class MultiHeadSelfAttention(nn.Module):
     def __init__(self, embed_dim: int, num_heads: int, bias=False) -> None:
@@ -67,34 +71,42 @@ class BreathWise(nn.Module):
     # Breath-Wise convolution block through dilations
     # used in the breath-wise cross attention
     
-    def __init__(self, in_channel, out_channel):
+    def __init__(self, in_channel, out_channel, activation='gelu'):
         super(BreathWise).__init__()
         
         self.d_conv1 = nn.Conv2d(in_channel, out_channel, 3, padding=1, dilation=1)
         self.d_conv2 = nn.Conv2d(in_channel, out_channel, 3, padding=2, dilation=3)
         self.d_conv3 = nn.Conv2d(in_channel, out_channel, 3, padding=4, dilation=5)
         self.final_conv = nn.Conv2d(in_channel, out_channel, 3, padding=1)
-        self.gelu = nn.GELU()
+        if activation == 'gelu':
+            self.actf = nn.GELU()
+        elif activation == "relu":
+            self.actf = nn.ReLU()
+        elif activation == "lrelu":
+            self.actf = nn.LeakyReLU()
+        else:
+            raise NotImplementedError
+        
         self.dropout = nn.Dropout(0.1)
         
     
     def forward(self, x):
         # x should be output from the cross attention (but before concat with the encoder output)
         x1 = self.d_conv1(x)
-        x1 = self.gelu(x1)
+        x1 = self.actf(x1)
         x1 = self.dropout(x1)
         
         x2 = self.d_conv2(x)
-        x2 = self.gelu(x2)
+        x2 = self.actf(x2)
         x2 = self.dropout(x2)
         
         x3 = self.d_conv3(x)
-        x3 = self.gelu(x3)
+        x3 = self.actf(x3)
         x3  = self.dropout(x3)
         
         x_all = x1 + x2 + x3 # element wise add
         x_all = self.final_conv(x_all)
-        x_all = self.gelu(x_all)
+        x_all = self.actf(x_all)
         x_all = self.dropout(x_all)
         
         return x_all        
