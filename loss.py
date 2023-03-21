@@ -1,19 +1,16 @@
 # Loss functions for the project
 
-# Author: Simon, last modify Nov. 18, 2022
+# Author: Simon, last modify 3. 20, 2023
 
 """
 Change log:
-- Reacher: file created, implement L1 loss and L2 loss function
-- Reacher: update image gradient calculation
-- Simon: update image gradient loss
-- Simon: add loss_func2, and L1_Charbonnier_loss
+- Adapte from DILRAN code
+- Add dice and bce loss
 """
 
 import numpy as np
 import torch
 import torch.nn as nn
-from our_utils import Percep_loss
 from torchmetrics.functional import image_gradients
 from torchvision.transforms import transforms
 import torch.nn.functional as F
