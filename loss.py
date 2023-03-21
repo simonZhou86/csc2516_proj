@@ -209,12 +209,12 @@ class GeneralizedSoftDiceLoss(nn.Module):
             loss = loss.mean()
         return loss
 
-def BCE_loss(predicted, target):
-    """
-    To compute binary cross entropy loss between predicted and target
-    """
-    return nn.BCELoss(predicted, target)
+class BCELoss(nn.Module):
+    def __init__(self):
+        super(BCELoss).__init__()
     
+    def forward(self, predicted, target):
+        return nn.BCELoss(predicted, target)
 
 
 def perceptual_loss(vgg, predicted, target, block_idx, device):
@@ -225,9 +225,10 @@ def perceptual_loss(vgg, predicted, target, block_idx, device):
     return p_loss(predicted, target)
 
 
-def loss_func(vgg, predicted, target, lambda1, lambda2, block_idx, device):
+def loss_func(vgg, predicted, target, c1, c2, lambda1, lambda2, block_idx, device):
     """
-    same as loss_func, except the gradient loss is change to grad_loss() class
+    final loss function:
+    weighted sum of main loss and auxiliary loss
     """
     img_grad_loss = grad_loss(device)
     #L1_charbonnier = L1_Charbonnier_loss()
@@ -235,5 +236,11 @@ def loss_func(vgg, predicted, target, lambda1, lambda2, block_idx, device):
     reg_loss = mse_loss(predicted, target)
     img_grad_dif = img_grad_loss(predicted, target)
     percep = perceptual_loss(vgg, predicted, target, block_idx, device)
-    loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
-    return loss, reg_loss, img_grad_dif, percep
+    dice = GeneralizedSoftDiceLoss()
+    main_dice_loss = dice(predicted, target)
+    bce = BCELoss()
+    main_bce_loss = bce(predicted, target)
+    main_loss = main_bce_loss + main_dice_loss
+    axu_loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
+    total = c1 * (main_loss) + c2*(axu_loss)
+    return total, main_loss, axu_loss
