@@ -3,7 +3,7 @@
 TODO List
 
 - [x] Preprocessing
-- [ ] Loss function: Dice loss implementation
+- [x] Loss function: Dice loss implementation
 - [x] Transformer model, decoder
 - [x] Attention mechanism revisit and revise
 - [ ] training and test scripts
