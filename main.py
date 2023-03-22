@@ -10,6 +10,7 @@ import os
 from loss import loss_func, loss_unet
 from torchvision.models import vgg16_bn
 from baselines import UNet
+from dataset import BraTS_2d
 
 vgg = vgg16_bn(pretrained=True)
 
@@ -104,8 +105,8 @@ def test_epoch(args, model, val_loader, device, epoch):
     return dice_scores.avg
 
 def train(args):
-    train_dataset = None # TODO: create dataset
-    val_dataset = None # TODO: create dataset
+    train_dataset = BraTS_2d(args.data_dir, mode='train')
+    val_dataset = BraTS_2d(args.data_dir, mode='val')
     train_loader = DataLoader(train_dataset, 
                               batch_size=args.batch_size, 
                               num_workers=args.num_workers,
@@ -144,7 +145,7 @@ def train(args):
         torch.save(model.state_dict(), os.path.join(args.save_dir, f'{model_name}_{epoch}.pth'))
 
 def test(args):
-    test_dataset = None # TODO: create dataset
+    test_dataset = BraTS_2d(args.data_dir, mode='test')
     test_loader = DataLoader(test_dataset,
                             batch_size=args.batch_size,
                             num_workers=args.num_workers,
@@ -163,7 +164,8 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='Train MTUNet')
     parser.add_argument('--train', action='store_true', help='train the model')
     parser.add_argument('--test', action='store_true', help='test the model')
-    parser.add_argument('--model_path', type=str, help='path to the model')
+    parser.add_argument('--data_dir', type=str, default='data', help='path to the dataset')
+    parser.add_argument('--model_path', type=str, default=None, help='path to load the model')
     parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
