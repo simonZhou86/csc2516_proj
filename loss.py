@@ -241,3 +241,11 @@ def loss_func(vgg, predicted, reconstructed, target, c1, c2, lambda1, lambda2, b
     axu_loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
     total = c1 * (main_loss) + c2*(axu_loss)
     return total, main_loss, axu_loss
+
+def loss_unet(pred, target, devide):
+    """
+    loss function for unet
+    """
+    bce = BCELoss()
+    bce.to(devide)
+    return bce(pred, target)

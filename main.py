@@ -7,8 +7,9 @@ import time
 from utils import AverageMeter
 from metrics import dice, iou
 import os
-from loss import loss_func
+from loss import loss_func, loss_unet
 from torchvision.models import vgg16_bn
+from baselines import UNet
 
 vgg = vgg16_bn(pretrained=True)
 
@@ -28,13 +29,16 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         data, target = data.to(device), target.to(device)
 
         optimizer.zero_grad()
-
-        pred_seg, pred_recon = model(img)
+        if args.unet:
+            pred = model(img)
+            loss = loss_unet(pred, target, device)
+        else:
+            pred_seg, pred_recon = model(img)
  
-        loss = loss_func(vgg, pred_seg, pred_recon, target, 
-                         args.c1, args.c2, 
-                         args.lambda1, args.lambda2, 
-                         args.block_idx, device)
+            loss = loss_func(vgg, pred_seg, pred_recon, target, 
+                            args.c1, args.c2, 
+                            args.lambda1, args.lambda2, 
+                            args.block_idx, device)
         
         losses.update(loss.data[0], img.size(0))
 
@@ -73,10 +77,16 @@ def test_epoch(args, model, val_loader, device, epoch):
 
         pred_seg, pred_recon = model(img)
 
-        loss = loss_func(vgg, pred_seg, pred_recon, target, 
-                         args.c1, args.c2, 
-                         args.lambda1, args.lambda2, 
-                         args.block_idx, device)
+        if args.unet:
+            pred = model(img)
+            loss = loss_unet(pred, target, device)
+        else:
+            pred_seg, pred_recon = model(img)
+ 
+            loss = loss_func(vgg, pred_seg, pred_recon, target, 
+                            args.c1, args.c2, 
+                            args.lambda1, args.lambda2, 
+                            args.block_idx, device)
         
         losses.update(loss.data[0], img.size(0))
 
@@ -110,7 +120,14 @@ def train(args):
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
-    model = MTUNet()
+    if args.unet:
+        model = UNet()
+        model_name = 'unet'
+        
+    else:
+        model = MTUNet()
+        model_name = 'mtunet'
+
     model = torch.nn.DataParallel(model).to(device)
     wandb.watch(model)
 
@@ -124,7 +141,7 @@ def train(args):
         train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch)
         test_epoch(args, model, val_loader, device, epoch)
 
-        torch.save(model.state_dict(), os.path.join(args.save_dir, 'model_{}.pth'.format(epoch)))
+        torch.save(model.state_dict(), os.path.join(args.save_dir, f'{model_name}_{epoch}.pth'))
 
 def test(args):
     test_dataset = None # TODO: create dataset
@@ -161,11 +178,18 @@ if __name__=='__main__':
     parser.add_argument('--lambda2', type=float, default=1., help='weight of percep loss')
     parser.add_argument('--block_idx', type=int, nargs='+', default=[0, 1, 2],
                          help='VGG block indices to use for style loss')
+    parser.add_argument('--unet', action='store_true', help='use UNet instead of MTUNet')
     args = parser.parse_args()
     if args.train:
-        wandb.init(name="Train-MTUNet",
+        if args.unet:
+            wandb.init(name="Train-UNet",
                    project="csc2516-project",
                    entity=args.viz_wandb)
+        else:
+            wandb.init(name="Train-MTUNet",
+                    project="csc2516-project",
+                    entity=args.viz_wandb)
+            
         wandb.config = {
             "max_epochs": args.epochs,
             "batch_size": args.batch_size,
