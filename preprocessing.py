@@ -124,16 +124,6 @@ def BraTS_seg_to_binary(seg):
     local_seg[local_seg>0] = 1
     return local_seg
 
-"""normalize"""
-
-def normalize(im):
-    for idx in range(len(im)):
-        min_val = im[idx].min()
-        max_val = im[idx].max()
-        if min_val == max_val:
-            im[idx] = torch.zeros(im[idx].shape)
-        else:
-            im[idx] = (im[idx] - min_val) / (max_val - min_val)
 
 """processing for each patient"""
 
@@ -206,9 +196,10 @@ for group in groups:
   for patient in patient_list:
     patient_path = os.path.join(group_path, patient)
     img, msk = BraTS_Patient_Loader(patient_path)
-    img_torch, msk_torch, zero_mask = filter(img, msk, patient_path)
     msk = BraTS_seg_to_binary(msk)
-    masks.append(msk)
+    img_torch, msk_torch, zero_mask = filter(img, msk, patient_path)
+    #msk = BraTS_seg_to_binary(msk)
+    #masks.append(msk)
     imgs.append(img_torch)
     image_count = img_torch.shape[0]
     end_index = start_index + image_count - 1
@@ -218,9 +209,18 @@ for group in groups:
     start_index = end_index + 1
 
 mask = torch.load("/content/gdrive/MyDrive/MICCAI_BraTS_2019_Data_Training/masks_torch.pt")
-normalize(mask)
 loaded_tensor = torch.load('/content/gdrive/MyDrive/MICCAI_BraTS_2019_Data_Training/imgs_torch.pt')
-normalize(loaded_tensor)
+
+image_2 = loaded_tensor.float()
+
+# Normalize each image in the tensor to the range [0, 1]
+for i in range(image_2.shape[0]):
+    # Get the ith image from the tensor
+    image_1 = image_2[i, 0, :, :].numpy()/255
+    #normalized_input = (image_1 - np.amin(image_1)) / (np.amax(image_1) - np.amin(image_1))
+  
+    # Update the ith image in the tensor
+    image_2[i, 0, :, :] = torch.from_numpy(image_1)
 
 """268 patients in train (34274 images), 67 patients in test (8576 images), 335 patients in total (42850 images)"""
 
