@@ -18,8 +18,8 @@ class BreathWise(nn.Module):
         super(BreathWise).__init__()
         
         self.d_conv1 = nn.Conv2d(in_channel, out_channel, 3, padding=1, dilation=1)
-        self.d_conv2 = nn.Conv2d(in_channel, out_channel, 3, padding=2, dilation=3)
-        self.d_conv3 = nn.Conv2d(in_channel, out_channel, 3, padding=4, dilation=5)
+        self.d_conv2 = nn.Conv2d(in_channel, out_channel, 3, padding=1, dilation=3)
+        self.d_conv3 = nn.Conv2d(in_channel, out_channel, 3, padding=1, dilation=5)
         self.final_conv = nn.Conv2d(in_channel, out_channel, 3, padding=1)
         if activation == 'gelu':
             self.actf = nn.GELU()
