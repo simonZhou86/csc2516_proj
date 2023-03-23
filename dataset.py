@@ -16,7 +16,7 @@ class BraTS_2d(Dataset):
         # add transformation method
         self.need_transform = True
         if self.transform is None:
-            self.need_transform == False
+            self.need_transform = False
         elif self.transform == "resize":
             self.resize = transforms.Resize((128, 128)) # or we can directly use F.interpolate instead
         else:
