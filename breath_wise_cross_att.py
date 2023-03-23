@@ -15,12 +15,12 @@ class BreathWise(nn.Module):
     # used in the breath-wise cross attention
     
     def __init__(self, in_channel, out_channel, activation='gelu'):
-        super(BreathWise).__init__()
+        super(BreathWise, self).__init__()
         
-        self.d_conv1 = nn.Conv2d(in_channel, out_channel, 3, padding=1, dilation=1)
-        self.d_conv2 = nn.Conv2d(in_channel, out_channel, 3, padding=1, dilation=3)
-        self.d_conv3 = nn.Conv2d(in_channel, out_channel, 3, padding=1, dilation=5)
-        self.final_conv = nn.Conv2d(in_channel, out_channel, 3, padding=1)
+        self.d_conv1 = nn.Conv2d(in_channel, out_channel, kernel_size = 3, stride = 1, padding = "same")
+        self.d_conv2 = nn.Conv2d(in_channel, out_channel, kernel_size = 3, stride = 1, padding = "same", dilation=3)
+        self.d_conv3 = nn.Conv2d(in_channel, out_channel, kernel_size = 3, stride = 1, padding = "same", dilation=5)
+        self.final_conv = nn.Conv2d(in_channel, out_channel, kernel_size=3, padding=1)
         if activation == 'gelu':
             self.actf = nn.GELU()
         elif activation == "relu":
@@ -38,15 +38,17 @@ class BreathWise(nn.Module):
         x1 = self.d_conv1(x)
         x1 = self.actf(x1)
         x1 = self.dropout(x1)
-        
+        #print("x1: ", x1.shape)
+
         x2 = self.d_conv2(x)
         x2 = self.actf(x2)
         x2 = self.dropout(x2)
-        
+        #print("x2: ", x2.shape)
+
         x3 = self.d_conv3(x)
         x3 = self.actf(x3)
         x3  = self.dropout(x3)
-        
+        #print("x3: ", x3.shape)
         x_all = x1 + x2 + x3 # element wise add
         x_all = self.final_conv(x_all)
         x_all = self.actf(x_all)
@@ -115,8 +117,8 @@ class BreathWiseCrossAttention(nn.Module):
         
         y = torch.mul(y, s_enc) # get attention features
         
-        print(y.shape, y_orig.shape) # debug, check the shape
-        
-        y = self.bw_block(y + y_orig) # breath-wise block
+        #print(y.shape, y_orig.shape) # debug, check the shape
+        #print(y.shape)
+        y = self.bw_block(y)# + y_orig) # breath-wise block
         
         return y
