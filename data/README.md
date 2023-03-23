@@ -2,7 +2,7 @@ BraTS2019: https://pan.baidu.com/s/1S5XGTdHkwFnagKS-5vWYBg Passcode: 2333
 
 Google drive: https://drive.google.com/file/d/1xFvGezfc7DRoOW-vBP68dzZDcvRCKC8s/view?usp=sharing
 
-train image: https://drive.google.com/file/d/1-2Nfftd8EHyG9zbXGoLgPMfcGXZCr-wz/view?usp=sharing
+train image: https://drive.google.com/file/d/1--mTjgHCegBBaY1Y5i2SmbZGORg_-5hq/view?usp=sharing
 
 test image: https://drive.google.com/file/d/1-2Nfftd8EHyG9zbXGoLgPMfcGXZCr-wz/view?usp=sharing
 
