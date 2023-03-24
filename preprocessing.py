@@ -58,6 +58,19 @@ def save_object(ob, filename):
 # if not os.path.exists("./Results"):
 #   os.mkdir("./Results")
 
+""" normalize to [0,1] """
+def normalize(im):
+    mins = [im[idx].min() for idx in range(len(im))]
+    maxes = [im[idx].max() for idx in range(len(im))]
+
+    for idx in range(len(im)):
+        min_val = mins[idx]
+        max_val = maxes[idx]
+        if min_val == max_val:
+            im[idx] = torch.zeros(im[idx].shape)
+        else:
+            im[idx] = (im[idx] - min_val) / (max_val - min_val)
+
 """data loader"""
 
 def BraTS_Patient_Loader(path):
@@ -99,10 +112,11 @@ def filter(img, msk, patient_path):
   selected_img = img[:, :, nonzero_indices]
   selected_msk = msk[:,:, nonzero_indices]
   for i in range(selected_img.shape[2]):
-    temp_img = Image.fromarray(selected_img[:,:,i]).resize((128,128))
+    resize_transform = transforms.Resize((128,128))
+    temp_img = resize_transform(Image.fromarray(selected_img[:,:,i]))
     temp_array = np.array(temp_img).reshape(1, 128, 128)
     image_slices.append(temp_array)
-    temp_msk = Image.fromarray(selected_msk[:,:,i]).resize((128,128))
+    temp_msk =resize_transform(Image.fromarray(selected_msk[:,:,i]))
     temp_arr_msk = np.array(temp_msk).reshape(1, 128, 128)
     mask_slices.append(temp_arr_msk)
   image_stack = np.stack(image_slices, axis=0)
@@ -173,10 +187,10 @@ if __name__ == "__main__":
 
 """split into train/validation + test (0.8 VS 0.2)"""
 
-img_normalized = img_object/255.
-torch.save(img_normalized, "/content/gdrive/MyDrive/img_normalized.pt")
+normalize(img_object)
+torch.save(img_object, "/content/gdrive/MyDrive/img_normalized.pt")
 
-"""268 patients in train (34274 images), 67 patients in test (8576 images), 335 patients in total (42850 images)"""
+"""268 patients in train (37024 images), 67 patients in test (9278 images), 335 patients in total (46302 images)"""
 
 num_patients = len(patient_indices)
 subset_count = int(num_patients * 0.8)
@@ -196,7 +210,7 @@ for patient_id in not_selected_ids:
 indices_tensor = torch.tensor(selected_indices, dtype=torch.long)
 
 # Select the specified indices from the torch object
-train_data = torch.index_select(img_normalized, 0, indices_tensor)
+train_data = torch.index_select(img_object, 0, indices_tensor)
 
 # Select the specified indices from the torch object
 mask_train = torch.index_select(mask_object, 0, indices_tensor)
@@ -204,7 +218,7 @@ mask_train = torch.index_select(mask_object, 0, indices_tensor)
 test_tensor = torch.tensor(test_indices, dtype=torch.long)
 
 # Select the specified indices from the torch object
-test_data = torch.index_select(img_normalized, 0, test_tensor)
+test_data = torch.index_select(img_object, 0, test_tensor)
 
 # Select the specified indices from the torch object
 mask_test = torch.index_select(mask_object, 0, test_tensor)
