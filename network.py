@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from breath_wise_cross_att import *
 '''
-@ author: Simon Zhou, Frank Liu
+@ author: Simon Zhou, Xudong Liu
 
 Encoder first, no attention at this point, use strided convolutions to downsample, encode to latent space, decouple with the decoder
 
