@@ -18,7 +18,8 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
-    dice_scores = AverageMeter()
+    dice_scores = AverageMeter() 
+    iou_scores = AverageMeter()
 
     model.train()
 
@@ -44,6 +45,8 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         losses.update(loss.data[0], img.size(0))
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
+        # TODO: add threshold value?
+        iou_scores.update(iou(pred_seg, target), img.size(0))
 
         loss.backward()
         optimizer.step()
@@ -56,20 +59,23 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Score {dice.val:.3f} ({dice.avg:.3f})'.format(
+                  'Dice Score {dice.val:.3f} ({dice.avg:.3f})'
+                  'IOU Score {iou.val:.3f} ({iou.avg:.3f})'.format(
                     epoch, batch_idx, len(train_loader), batch_time=batch_time,
-                    data_time=data_time, loss=losses, dice=dice_scores))
+                    data_time=data_time, loss=losses, dice=dice_scores, iou=iou_scores))
             
             wandb.log({"train_loss": losses.val,
                         "tran_data_time": data_time.val,
                         "train_batch_time": batch_time.val})
             
     wandb.log({"train_loss_epoch": losses.avg,
-                "train_dice_epoch": dice_scores.avg,})
+                "train_dice_epoch": dice_scores.avg,
+                "train_iou_epoch": iou_scores.avg,})
 
 def test_epoch(args, model, val_loader, device, epoch):
     losses = AverageMeter()
     dice_scores = AverageMeter()
+    iou_scores = AverageMeter()
 
     model.eval()
 
@@ -92,17 +98,20 @@ def test_epoch(args, model, val_loader, device, epoch):
         losses.update(loss.data[0], img.size(0))
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
+        iou_scores.update(iou(pred_seg, target), img.size(0))
             
         if batch_idx % args.log_interval == 0:
             print('Test: [{0}][{1}/{2}]\t'
                 'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                'Score {dice.val:.3f} ({dice.avg:.3f})'.format(
-                    epoch, batch_idx, len(val_loader), loss=losses, dice=dice_scores))
+                'Dice Score {dice.val:.3f} ({dice.avg:.3f})'
+                'IOU Score {iou.val:.3f} ({iou.avg:.3f})'.format(
+                    epoch, batch_idx, len(val_loader), loss=losses, dice=dice_scores, iou=iou_scores))
             
     wandb.log({"val_loss_epoch": losses.avg,
-                "val_dice_epoch": dice_scores.avg,})
+                "val_dice_epoch": dice_scores.avg,
+                "val_iou_epoch": iou_scores.avg,})
         
-    return dice_scores.avg
+    return dice_scores.avg, iou_scores.avg
 
 def train(args):
     train_dataset = BraTS_2d(args.data_dir, mode='train')
@@ -156,8 +165,8 @@ def test(args):
     model = torch.nn.DataParallel(model).to(device)
     model.load_state_dict(torch.load(args.model_path))
 
-    dice_score = test_epoch(args, model, test_loader, device, 0)
-    print('Test result:\nDice score: {}'.format(dice_score))
+    dice_score, iou_score = test_epoch(args, model, test_loader, device, 0)
+    print('Test result:\nDice score: {}\nIOU score: {}'.format(dice_score, iou_score))
 
 
 if __name__=='__main__':
