@@ -195,6 +195,7 @@ torch.save(img_object, "/content/gdrive/MyDrive/img_normalized.pt")
 num_patients = len(patient_indices)
 subset_count = int(num_patients * 0.8)
 shuffled_patient_ids = list(patient_indices.keys())
+random.seed(4)
 random.shuffle(shuffled_patient_ids)
 selected_patient_ids = shuffled_patient_ids[:subset_count]
 
