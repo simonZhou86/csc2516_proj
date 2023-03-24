@@ -78,6 +78,8 @@ class Norm_layer(nn.Module):
             self.norm = nn.BatchNorm2d(channels)
         elif type == "instance":
             self.norm = nn.InstanceNorm2d(channels)
+        elif type == "layer":
+            self.norm = nn.LayerNorm(channels, eps=1e-5)
         else:
             raise NotImplementedError(
                 "normalization layer [%s] is not implemented!" % type)
