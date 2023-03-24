@@ -135,7 +135,7 @@ class conv_block(nn.Module):
 class down_conv(nn.Module):
     # downsample by strided convolutions with stride 2, instead of maxpooling
     def __init__(self, ch_in, ch_out):
-        super(down_conv).__init__()
+        super(down_conv, self).__init__()
 
         self.down = nn.Sequential(
             nn.Conv2d(ch_in,
@@ -308,7 +308,7 @@ class SpatialAttn(nn.Module):
 class Encoder(nn.Module):
     # code ref: https://github.com/LeeJunHyun/Image_Segmentation/blob/db34de21767859e035aee143c59954fa0d94bbcd/network.py
     def __init__(self):
-        super(Encoder).__init__()
+        super(Encoder, self).__init__()
 
         self.conv1 = conv_block(1, 64)
         self.down1 = down_conv(64, 64)  # 128->64
@@ -428,7 +428,7 @@ class Transformer(nn.Module):
 class Segmentor(nn.Module):
     def __init__(self, num_cls):
         # segmentation head to produce segmentation map
-        super(Decoder).__init__()
+        super(Segmentor, self).__init__()
 
         # 8 ->16
         self.up5 = up_conv(1024, 512)
@@ -486,16 +486,88 @@ class Segmentor(nn.Module):
 
         return x
 
+# sgegmentation head using cross attention module
+class SegmentorCA(nn.Module):
+    def __init__(self, num_cls):
+        # segmentation head to produce segmentation map for cross attention module
+        super(SegmentorCA, self).__init__()
+
+        # 8 ->16
+        self.up5 = up_conv(1024, 512)
+        self.upconv5 = conv_block(1024, 512)
+        self.att5 = BreathWiseCrossAttention(embed_dim=512, num_heads=4, channel_S=512, channel_Y=1024)
+
+        # 16 -> 32
+        self.up4 = up_conv(512, 256)
+        self.upconv4 = conv_block(512, 256)
+        self.att4 = BreathWiseCrossAttention(embed_dim=256, num_heads=4, channel_S=256, channel_Y=512)
+        # 32-> 64
+        self.up3 = up_conv(256, 128)
+        self.upconv3 = conv_block(256, 128)
+        self.att3 = BreathWiseCrossAttention(embed_dim=128, num_heads=4, channel_S=128, channel_Y=256)
+
+        # 64 -> 128
+        self.up2 = up_conv(128, 64)
+        self.upconv2 = conv_block(128, 64)
+        self.att2 = BreathWiseCrossAttention(embed_dim=64, num_heads=4, channel_S=64, channel_Y=128)
+
+        # 64 channel to 1
+        self.final_conv = nn.Conv2d(64,
+                                    num_cls,
+                                    kernel_size=1,
+                                    stride=1,
+                                    padding=0,
+                                    bias=True)
+        self.seg_act = nn.Sigmoid()
+
+    def forward(self, lat_feat, concat_feats):
+        # channels: 64, 128, 256, 512
+        concat1, concat2, concat3, concat4 = concat_feats
+        # lat_feat: 1024,8,8
+        
+        cross1 = self.att5(concat4, lat_feat)
+        x = self.up5(lat_feat)
+        x = self.upconv5(torch.cat([cross1, x], dim=1)) # should be 512, 16, 16
+        #print(x.shape)
+
+        cross2 = self.att4(concat3, x)
+        #print("cross2 shape", cross2.shape)
+        x = self.up4(x)
+        x = self.upconv4(torch.cat([cross2, x], dim=1)) # should be 256, 32, 32
+        #print(x.shape)
+
+        cross3 = self.att3(concat2, x)
+        #print("cross3 shape", cross3.shape)
+        x = self.up3(x)
+        x = self.upconv3(torch.cat([cross3, x], dim=1)) # should be 128, 64, 64
+        #print(x.shape)
+
+        cross4 = self.att2(concat1, x)
+        #print("cross4 shape", cross4.shape)
+        x = self.up2(x)
+        x = self.upconv2(torch.cat([cross4, x], dim=1)) # should be 64, 128, 128
+        #print(x.shape)
+
+        x = self.final_conv(x) # should be 1, 128, 128
+
+        # segmentation map, sigmoid maps to [0,1]
+        x = self.seg_act(x)  # TODO: check if sigmoid is needed
+
+        return x
 
 class MTUNet(nn.Module):
     # Multi-task Transformer U-Net
 
-    def __init__(self, num_cls=1):
+    def __init__(self, num_cls=1, cross_att = False):
         super(MTUNet, self).__init__()
         self.encoder = Encoder()
         self.transformer = Transformer()
         self.decoder = Decoder()
-        self.segmentor = Segmentor(num_cls)
+        # whether we want to use cross attention module
+        if not cross_att:
+            self.segmentor = SegmentorCA(num_cls)
+        else:
+            self.segmentor = Segmentor(num_cls)
 
     def forward(self, x):
         # x: [B, C, H, W]
