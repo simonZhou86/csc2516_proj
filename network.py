@@ -558,13 +558,13 @@ class SegmentorCA(nn.Module):
 class MTUNet(nn.Module):
     # Multi-task Transformer U-Net
 
-    def __init__(self, num_cls=1, cross_att = False):
+    def __init__(self, num_cls=1, cross_att = True):
         super(MTUNet, self).__init__()
         self.encoder = Encoder()
         self.transformer = Transformer()
         self.decoder = Decoder()
         # whether we want to use cross attention module
-        if not cross_att:
+        if cross_att:
             self.segmentor = SegmentorCA(num_cls)
         else:
             self.segmentor = Segmentor(num_cls)
