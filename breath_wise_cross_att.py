@@ -66,8 +66,8 @@ class BreathWiseCrossAttention(nn.Module):
         # Y: current layer decoder output
         # S: should be c*2h*2w, and Y should be 2c*h*w
         self.conv_S = nn.Sequential(
-            nn.MaxPool2d(2),
-            nn.Conv2d(channel_S, channel_S, 1, bias=bias),
+            #nn.MaxPool2d(2),
+            nn.Conv2d(channel_S, channel_S, kernel_size = 1, stride=2, bias=bias),
             nn.BatchNorm2d(channel_S),
             nn.ReLU()
         ) # out of this is c*h*w
