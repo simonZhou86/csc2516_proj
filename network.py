@@ -384,9 +384,9 @@ class Decoder(nn.Module):
 
         x = self.final_conv(x)
 
-        x = F.tanh(
+        x = F.sigmoid(
             x
-        )  # map to [-1,1], depands on the range of input image, use sigmoid if input image is in [0,1]
+        )  # map to [0,1], range of input image is also [0,1]
 
         return x
 
