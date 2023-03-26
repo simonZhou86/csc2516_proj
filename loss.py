@@ -159,52 +159,73 @@ def mse_loss(predicted, target):
     #return torch.mean(torch.pow(torch.norm((predicted - target), p = "fro"), 2))
 
 
-class GeneralizedSoftDiceLoss(nn.Module):
+class DiceLoss(nn.Module):
+    # basic dice loss
+    # ref: https://arxiv.org/abs/1707.03237
+    def __init__(self, epsilon = 1e-6, weight = None):
+        super(DiceLoss, self).__init__()
+        
+        self.weight = weight
+        self.epsilon = epsilon
+        
+    def forward(self, input, target):
+        # input: N,C,H,W, taget: N,C,H,W
+        # assume input tensor is activated, i.e. already applied sigmoid or softmax
+        assert input.size() == target.size(), "'input' and 'target' must have the same shape"
+        
+        channel_num = input.size(1)
+        input = input.permute(1, 0, 2, 3).contiguous().view(channel_num, -1)
+        target = target.permute(1, 0, 2, 3).contiguous().view(channel_num, -1)
+        target = target.float()
 
+        # compute per channel Dice Coefficient
+        intersect = (input * target).sum(-1)
+        if self.weight is not None:
+            intersect = self.weight * intersect
+
+        # here we can use standard dice (input + target).sum(-1) or extension (see V-Net) (input^2 + target^2).sum(-1)
+        denominator = (input * input).sum(-1) + (target * target).sum(-1)
+        return 2 * (intersect / denominator.clamp(min=self.epsilon))
+        
+
+class GeneralizedDiceLoss(nn.Module):
+    # generalized dice loss
+    # ref: https://arxiv.org/abs/1707.03237
     def __init__(self,
-                 p=1,
-                 smooth=1,
-                 reduction='mean',
-                 weight=None,
-                 ignore_lb=255):
-        super(GeneralizedSoftDiceLoss, self).__init__()
-        self.p = p
-        self.smooth = smooth
-        self.reduction = reduction
+                 epsilon=1e-6,
+                 weight=None):
+        super(GeneralizedDiceLoss, self).__init__()
+        self.epsilon = epsilon
         self.weight = None if weight is None else torch.tensor(weight)
-        self.ignore_lb = ignore_lb
 
-    def forward(self, logits, label):
-        '''
-        args: logits: tensor of shape (N, 1, H, W)
-        args: label: tensor of shape(N, 1, H, W)
-        '''
+    def forward(self, input, target):
+        # input: N,C,H,W, taget: N,C,H,W
         # overcome ignored label
-        logits = logits.float()
-        ignore = label.data.cpu() == self.ignore_lb
-        label = label.clone()
-        label[ignore] = 0
-        lb_one_hot = torch.zeros_like(logits).scatter_(1, label, 1)
-        ignore = ignore.nonzero()
-        _, M = ignore.size()
-        a, *b = ignore.chunk(M, dim=1)
-        lb_one_hot[[a, torch.arange(lb_one_hot.size(1)).long(), *b]] = 0
-        lb_one_hot = lb_one_hot.detach()
+        assert input.size() == target.size(), "'input' and 'target' must have the same shape"
 
-        # compute loss
-        probs = torch.sigmoid(logits)
-        numer = torch.sum((probs*lb_one_hot), dim=(2, 3))
-        denom = torch.sum(probs.pow(self.p)+lb_one_hot.pow(self.p), dim=(2, 3))
-        if not self.weight is None:
-            numer = numer * self.weight.view(1, -1)
-            denom = denom * self.weight.view(1, -1)
-        numer = torch.sum(numer, dim=1)
-        denom = torch.sum(denom, dim=1)
-        loss = 1 - (2*numer+self.smooth)/(denom+self.smooth)
+        channel_num = input.size(1)
+        input = input.permute(1, 0, 2, 3).contiguous().view(channel_num, -1)
+        target = target.permute(1, 0, 2, 3).contiguous().view(channel_num, -1)
+        target = target.float()
 
-        if self.reduction == 'mean':
-            loss = loss.mean()
-        return loss
+        if input.size(0) == 1:
+            # for GDL to make sense we need at least 2 channels (see https://arxiv.org/pdf/1707.03237.pdf)
+            # put foreground and background voxels in separate channels
+            input = torch.cat((input, 1 - input), dim=0)
+            target = torch.cat((target, 1 - target), dim=0)
+
+        # GDL weighting: the contribution of each label is corrected by the inverse of its volume
+        w_l = target.sum(-1)
+        w_l = 1 / (w_l * w_l).clamp(min=self.epsilon)
+        w_l.requires_grad = False
+
+        intersect = (input * target).sum(-1)
+        intersect = intersect * w_l
+
+        denominator = (input + target).sum(-1)
+        denominator = (denominator * w_l).clamp(min=self.epsilon)
+
+        return 2 * (intersect.sum() / denominator.sum())
 
 class BCELoss(nn.Module):
     def __init__(self):
@@ -222,7 +243,7 @@ def perceptual_loss(vgg, predicted, target, block_idx, device):
     return p_loss(predicted, target)
 
 
-def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, lambda1, lambda2, block_idx, device):
+def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, lambda1, lambda2, block_idx, device, generalized_dice = False):
     """
     final loss function:
     weighted sum of main loss and auxiliary loss
@@ -233,10 +254,15 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     reg_loss = mse_loss(reconstructed, recon_target)
     img_grad_dif = img_grad_loss(reconstructed, recon_target)
     percep = perceptual_loss(vgg, reconstructed, recon_target, block_idx, device)
-    dice = GeneralizedSoftDiceLoss()
+    if generalized_dice:
+        dice = GeneralizedDiceLoss()
+    else:
+        dice = DiceLoss()
     main_dice_loss = dice(predicted, mask_target)
     bce = BCELoss()
     main_bce_loss = bce(predicted, mask_target)
+    if generalized_dice:
+        raise Warning("Caution! You are using BCE loss with Generalized dice loss!")
     main_loss = main_bce_loss + main_dice_loss
     axu_loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
     total = c1 * (main_loss) + c2*(axu_loss)
