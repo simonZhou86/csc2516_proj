@@ -1,2 +1,7 @@
 .vscode/
 *.pt
+
+# log
+wandb/
+
+__pycache__/
