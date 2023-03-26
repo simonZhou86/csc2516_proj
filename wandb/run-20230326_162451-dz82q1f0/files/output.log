@@ -1,0 +1,18 @@
+pre x.shape torch.Size([2, 1024, 8, 8])
+post x.shape torch.Size([2, 64, 1024])
+/Users/xudongliu/opt/anaconda3/envs/vision/lib/python3.8/site-packages/torch/nn/functional.py:1949: UserWarning: nn.functional.tanh is deprecated. Use torch.tanh instead.
+  warnings.warn("nn.functional.tanh is deprecated. Use torch.tanh instead.")
+Traceback (most recent call last):
+  File "main.py", line 217, in <module>
+    train(args)
+  File "main.py", line 153, in train
+    train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch)
+  File "main.py", line 42, in train_epoch
+    loss = loss_func(vgg, pred_seg, pred_recon, img, target,
+  File "/Users/xudongliu/work_flow/csc2516_proj/loss.py", line 237, in loss_func
+    main_dice_loss = dice(predicted, mask_target)
+  File "/Users/xudongliu/opt/anaconda3/envs/vision/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1130, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/Users/xudongliu/work_flow/csc2516_proj/loss.py", line 187, in forward
+    lb_one_hot = torch.zeros_like(logits).scatter_(1, label, 1)
+RuntimeError: index 1 is out of bounds for dimension 1 with size 1

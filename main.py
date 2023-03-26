@@ -28,7 +28,9 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
     for batch_idx, (img, target) in enumerate(train_loader):
         data_time.update(time.time() - end)
 
-        data, target = data.to(device), target.to(device)
+        img, target = img.to(device), target.to(device)
+        img = img.float()
+        target = target.long()
 
         optimizer.zero_grad()
         if args.unet:
@@ -37,7 +39,7 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         else:
             pred_seg, pred_recon = model(img)
  
-            loss = loss_func(vgg, pred_seg, pred_recon, target, 
+            loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
                             args.c1, args.c2, 
                             args.lambda1, args.lambda2, 
                             args.block_idx, device)
@@ -179,7 +181,6 @@ if __name__=='__main__':
     parser.add_argument('--batch_size', type=int, default=8, help='batch size')
     parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--recon_weight', type=float, default=1., help='weight of reconstruction loss')
     parser.add_argument('--log_interval', type=int, default=10, help='number of batches between logging')
     parser.add_argument('--save_dir', type=str, default='checkpoints', help='directory to save the model')
     parser.add_argument('--viz_wandb', type=str, default=None, help='wandb entity to log to')
@@ -190,7 +191,14 @@ if __name__=='__main__':
     parser.add_argument('--block_idx', type=int, nargs='+', default=[0, 1, 2],
                          help='VGG block indices to use for style loss')
     parser.add_argument('--unet', action='store_true', help='use UNet instead of MTUNet')
+    parser.add_argument('--dev', action='store_true', help='use dev mode')
     args = parser.parse_args()
+    if args.dev:
+        args.epochs = 1
+        args.batch_size = 2
+        args.num_workers = 0
+        args.log_interval = 1
+
     if args.train:
         if args.unet:
             wandb.init(name="Train-UNet",
@@ -205,7 +213,6 @@ if __name__=='__main__':
             "max_epochs": args.epochs,
             "batch_size": args.batch_size,
             "lr": args.lr,
-            "recon_weight": args.recon_weight,
         }
         train(args)
         wandb.finish()

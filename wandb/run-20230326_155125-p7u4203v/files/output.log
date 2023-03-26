@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "main.py", line 215, in <module>
+    train(args)
+  File "main.py", line 138, in train
+    model = MTUNet()
+  File "/Users/xudongliu/work_flow/csc2516_proj/network.py", line 565, in __init__
+    self.decoder = Decoder()
+  File "/Users/xudongliu/work_flow/csc2516_proj/network.py", line 352, in __init__
+    self.up1 = up_conv(1024, 512)
+  File "/Users/xudongliu/opt/anaconda3/envs/vision/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1236, in __setattr__
+    raise AttributeError(
+AttributeError: cannot assign module before Module.__init__() call

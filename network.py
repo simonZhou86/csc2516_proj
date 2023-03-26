@@ -346,7 +346,7 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self):
         # axuiliary decoder for reconstruction task
-        super(Decoder).__init__()
+        super(Decoder, self).__init__()
 
         # 8 ->16
         self.up1 = up_conv(1024, 512)
@@ -358,7 +358,7 @@ class Decoder(nn.Module):
         self.up3 = up_conv(256, 128)
         self.upconv3 = conv_block(128, 128)
         # 64 -> 128
-        self.up4 = up_conv(64, 64)
+        self.up4 = up_conv(128, 64)
         self.upconv4 = conv_block(64, 64)
 
         # 64 channel to 1
@@ -396,7 +396,7 @@ class Transformer(nn.Module):
     def __init__(self,
                  num_layers=2,
                  d_model=1024,
-                 nhead=12,
+                 nhead=8,
                  dim_feedforward=2048,
                  num_pixel=64,
                  dropout=0.1):
@@ -416,11 +416,13 @@ class Transformer(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, num_pixel, d_model))
 
     def forward(self, x):
+        print("pre x.shape", x.shape)
         # x: [B, C, H, W]
         B = x.shape[0]
         C = x.shape[1]
         x = x.permute(0, 2, 3, 1).contiguous().view(B, -1, C)  # [B, H*W, C]
         x = x + self.pos_embedding
+        print("post x.shape", x.shape)
         return self.transformer(x)
 
 
@@ -558,7 +560,7 @@ class SegmentorCA(nn.Module):
 class MTUNet(nn.Module):
     # Multi-task Transformer U-Net
 
-    def __init__(self, num_cls=1, cross_att = True):
+    def __init__(self, num_cls=1, cross_att = False): #TODO: check aross_att
         super(MTUNet, self).__init__()
         self.encoder = Encoder()
         self.transformer = Transformer()
@@ -570,9 +572,10 @@ class MTUNet(nn.Module):
             self.segmentor = Segmentor(num_cls)
 
     def forward(self, x):
-        # x: [B, C, H, W]
         lat_feat, concat_feats = self.encoder(x)
+        B, C, H, W  = lat_feat.shape
         lat_feat = self.transformer(lat_feat)
+        lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
         seg_map = self.segmentor(lat_feat, concat_feats)
         rec_img = self.decoder(lat_feat)
         return seg_map, rec_img

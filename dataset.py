@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 import torch
 import torch.nn.functional as F
 import torchvision.transforms as transforms
+import os
 
 class BraTS_2d(Dataset):
     def __init__(self, data_dir, mode='train', transform=None):
@@ -25,20 +26,20 @@ class BraTS_2d(Dataset):
     
     def load_data(self):
         if self.mode == 'train':
-            self.imgs = torch.load(self.data_dir + 'train_img.pt')
-            self.masks = torch.load(self.data_dir + 'train_mask.pt')
+            self.imgs = torch.load(os.path.join(self.data_dir, 'train_img.pt'))
+            self.masks = torch.load(os.path.join(self.data_dir, 'train_mask.pt'))
             # spilit train and val
             self.imgs = self.imgs[:self.imgs.shape[0] * 8 // 10]
             self.masks = self.masks[:self.masks.shape[0] * 8 // 10]
         elif self.mode == 'val':
-            self.imgs = torch.load(self.data_dir + 'train_img.pt')
-            self.masks = torch.load(self.data_dir + 'train_mask.pt')
+            self.imgs = torch.load(os.path.join(self.data_dir, 'train_img.pt'))
+            self.masks = torch.load(os.path.join(self.data_dir, 'train_mask.pt'))
             # spilit train and val
             self.imgs = self.imgs[self.imgs.shape[0] * 8 // 10:]
             self.masks = self.masks[self.masks.shape[0] * 8 // 10:]
         elif self.mode == 'test':
-            self.imgs = torch.load(self.data_dir + 'test_img.pt')
-            self.masks = torch.load(self.data_dir + 'test_mask.pt')
+            self.imgs = torch.load(os.path.join(self.data_dir, 'test_img.pt'))
+            self.masks = torch.load(os.path.join(self.data_dir, 'test_mask.pt'))
         else:
             raise ValueError('mode should be train or test')
         

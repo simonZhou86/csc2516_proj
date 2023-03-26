@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "main.py", line 215, in <module>
+    train(args)
+  File "main.py", line 138, in train
+    model = MTUNet()
+  File "/Users/xudongliu/work_flow/csc2516_proj/network.py", line 564, in __init__
+    self.transformer = Transformer()
+  File "/Users/xudongliu/work_flow/csc2516_proj/network.py", line 405, in __init__
+    self.transformer_layer = nn.TransformerEncoderLayer(d_model,
+  File "/Users/xudongliu/opt/anaconda3/envs/vision/lib/python3.8/site-packages/torch/nn/modules/transformer.py", line 363, in __init__
+    self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=batch_first,
+  File "/Users/xudongliu/opt/anaconda3/envs/vision/lib/python3.8/site-packages/torch/nn/modules/activation.py", line 956, in __init__
+    assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
+AssertionError: embed_dim must be divisible by num_heads

@@ -8,3 +8,9 @@ TODO List
 - [x] Attention mechanism revisit and revise
 - [x] training and test scripts
 - [x] baseline model(s)
+
+## Usage
+
+Train model
+ 
+python main.py --train --dev --viz_wandb xudong99

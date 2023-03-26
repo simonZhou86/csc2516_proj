@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "main.py", line 215, in <module>
+    train(args)
+  File "main.py", line 151, in train
+    train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch)
+  File "main.py", line 31, in train_epoch
+    data, target = data.to(device), target.to(device)
+UnboundLocalError: local variable 'data' referenced before assignment
