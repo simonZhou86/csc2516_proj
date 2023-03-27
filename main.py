@@ -79,6 +79,8 @@ def test_epoch(args, model, val_loader, device, epoch):
     dice_scores = AverageMeter()
     iou_scores = AverageMeter()
 
+    val_recon_imgs = []
+    num_show = [int(i.numpy()) for i in torch.randperm(args.batch_size)[:args.batch_size//2]]
     model.eval()
 
     for batch_idx, (img, target) in enumerate(val_loader):
@@ -101,7 +103,8 @@ def test_epoch(args, model, val_loader, device, epoch):
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
         iou_scores.update(iou(pred_seg, target), img.size(0))
-            
+        
+        val_recon_imgs.extend([pred_recon[i].squeeze(0).cpu().numpy() for i in num_show])
         if batch_idx % args.log_interval == 0:
             print('Test: [{0}][{1}/{2}]\t'
                 'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
@@ -111,7 +114,8 @@ def test_epoch(args, model, val_loader, device, epoch):
             
     wandb.log({"val_loss_epoch": losses.avg,
                 "val_dice_epoch": dice_scores.avg,
-                "val_iou_epoch": iou_scores.avg,})
+                "val_iou_epoch": iou_scores.avg,
+                "axuilary recon images": [wandb.Image(i) for i in val_recon_imgs]})
         
     return dice_scores.avg, iou_scores.avg
 
