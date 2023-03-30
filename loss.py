@@ -229,7 +229,7 @@ class GeneralizedDiceLoss(nn.Module):
 
 class BCELoss(nn.Module):
     def __init__(self):
-        super(BCELoss).__init__()
+        super(BCELoss, self).__init__()
     
     def forward(self, predicted, target):
         return nn.BCELoss(predicted, target)
@@ -259,8 +259,10 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     else:
         dice = DiceLoss()
     main_dice_loss = dice(predicted, mask_target)
-    bce = BCELoss()
-    main_bce_loss = bce(predicted, mask_target)
+    #bce = BCELoss()
+    # print("predicted type", predicted.dtype)
+    # print("mask target type", mask_target.dtype)
+    main_bce_loss = F.binary_cross_entropy(predicted, mask_target, reduction='mean')
     if generalized_dice:
         raise Warning("Caution! You are using BCE loss with Generalized dice loss!")
     main_loss = main_bce_loss + main_dice_loss
@@ -272,6 +274,6 @@ def loss_unet(pred, target, devide):
     """
     loss function for unet
     """
-    bce = BCELoss()
-    bce.to(devide)
-    return bce(pred, target)
+    # bce = BCELoss()
+    # bce.to(devide)
+    return F.binary_cross_entropy(pred, target, reduction='mean')
