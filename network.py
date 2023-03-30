@@ -416,41 +416,45 @@ class Transformer(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, num_pixel, d_model))
 
     def forward(self, x):
-        print("pre x.shape", x.shape)
+        #print("pre x.shape", x.shape)
         # x: [B, C, H, W]
         B = x.shape[0]
         C = x.shape[1]
         x = x.permute(0, 2, 3, 1).contiguous().view(B, -1, C)  # [B, H*W, C]
         x = x + self.pos_embedding
-        print("post x.shape", x.shape)
+        #print("post x.shape", x.shape)
         return self.transformer(x)
 
 
 # deocder - segmentation
 class Segmentor(nn.Module):
-    def __init__(self, num_cls):
+    def __init__(self, num_cls, att_type='att_unet'):
         # segmentation head to produce segmentation map
         super(Segmentor, self).__init__()
-
+        if att_type == "att_unet":
+            attModule = Attention_block
+        elif att_type == "non_local":
+            attModule = Non_local_Attn
+            raise Warning("Non-local Attention approach is not corrected in the forward method yet!, just a placeholder for now") 
         # 8 ->16
         self.up5 = up_conv(1024, 512)
         self.upconv5 = conv_block(1024, 512)
-        self.att5 = Attention_block(512, 512, 256)
+        self.att5 = attModule(512, 512, 256)
 
         # 16 -> 32
         self.up4 = up_conv(512, 256)
         self.upconv4 = conv_block(512, 256)
-        self.att4 = Attention_block(256, 256, 128)
+        self.att4 = attModule(256, 256, 128)
 
         # 32-> 64
         self.up3 = up_conv(256, 128)
         self.upconv3 = conv_block(256, 128)
-        self.att3 = Attention_block(128, 128, 64)
+        self.att3 = attModule(128, 128, 64)
 
         # 64 -> 128
         self.up2 = up_conv(128, 64)
         self.upconv2 = conv_block(128, 64)
-        self.att2 = Attention_block(64, 64, 32)
+        self.att2 = attModule(64, 64, 32)
 
         # 64 channel to 1
         self.final_conv = nn.Conv2d(64,
