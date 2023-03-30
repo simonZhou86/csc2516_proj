@@ -414,6 +414,12 @@ class Transformer(nn.Module):
 
         # learnable position embedding
         self.pos_embedding = nn.Parameter(torch.randn(1, num_pixel, d_model))
+        
+        # linear proj
+        self.linear_proj = nn.Linear(d_model, d_model)
+        
+        # pe_dropout
+        self.pe_drop = nn.Dropout(p=0.1)
 
     def forward(self, x):
         #print("pre x.shape", x.shape)
@@ -421,7 +427,9 @@ class Transformer(nn.Module):
         B = x.shape[0]
         C = x.shape[1]
         x = x.permute(0, 2, 3, 1).contiguous().view(B, -1, C)  # [B, H*W, C]
+        x = self.linear_proj(x)
         x = x + self.pos_embedding
+        x = self.pe_drop(x)
         #print("post x.shape", x.shape)
         return self.transformer(x)
 
@@ -488,7 +496,7 @@ class Segmentor(nn.Module):
         x = self.final_conv(x)
 
         # segmentation map, sigmoid maps to [0,1]
-        x = self.seg_act(x)  # TODO: check if sigmoid is needed
+        x = F.sigmoid(x)  # TODO: check if sigmoid is needed
 
         return x
 
@@ -557,7 +565,7 @@ class SegmentorCA(nn.Module):
         x = self.final_conv(x) # should be 1, 128, 128
 
         # segmentation map, sigmoid maps to [0,1]
-        x = self.seg_act(x)  # TODO: check if sigmoid is needed
+        x = F.sigmoid(x)  # TODO: check if sigmoid is needed
 
         return x
 
@@ -569,6 +577,7 @@ class MTUNet(nn.Module):
         self.encoder = Encoder()
         self.transformer = Transformer()
         self.decoder = Decoder()
+        self.post_norm = nn.LayerNorm(1024)
         # whether we want to use cross attention module
         if cross_att:
             self.segmentor = SegmentorCA(num_cls)
@@ -579,6 +588,7 @@ class MTUNet(nn.Module):
         lat_feat, concat_feats = self.encoder(x)
         B, C, H, W  = lat_feat.shape
         lat_feat = self.transformer(lat_feat)
+        lat_feat = self.post_norm(lat_feat)
         lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
         seg_map = self.segmentor(lat_feat, concat_feats)
         rec_img = self.decoder(lat_feat)
