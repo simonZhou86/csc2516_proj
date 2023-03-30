@@ -9,8 +9,12 @@ TODO List
 - [x] training and test scripts
 - [x] baseline model(s)
 
+After run some experiments:
+
+- [ ] change current hard-code preceptual loss implementation to LPIPS?
+
 ## Usage
 
-Train model
+Train model (Local test)
  
-python main.py --train --dev --viz_wandb xudong99
+python main.py --train --dev --viz_wandb <our team name>
