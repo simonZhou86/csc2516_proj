@@ -30,7 +30,7 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
 
         img, target = img.to(device), target.to(device)
         img = img.float()
-        target = target.long()
+        target = target.float() # cause error in BCE loss if target is long
 
         optimizer.zero_grad()
         if args.unet:
@@ -39,16 +39,24 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         else:
             pred_seg, pred_recon = model(img)
  
-            loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
+            total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
                             args.c1, args.c2, 
                             args.lambda1, args.lambda2, 
                             args.block_idx, device)
-        
-        losses.update(loss.data[0], img.size(0))
-
-        dice_scores.update(dice(pred_seg, target), img.size(0))
+            if isinstance(total_loss, tuple):
+                loss, seg_loss, aux_loss = total_loss
+            else:
+                loss = total_loss
+                
+        losses.update(loss.item(), img.size(0))
+        #print(losses)
+        temp_ds = dice(pred_seg, target)
+        dice_scores.update(temp_ds.item(), img.size(0))
+        #print(dice_scores)
         # TODO: add threshold value?
-        iou_scores.update(iou(pred_seg, target), img.size(0))
+        temp_ious = iou(pred_seg, target)
+        iou_scores.update(temp_ious.item(), img.size(0))
+        #print(iou_scores)
 
         loss.backward()
         optimizer.step()
@@ -84,7 +92,7 @@ def test_epoch(args, model, val_loader, device, epoch):
     model.eval()
 
     for batch_idx, (img, target) in enumerate(val_loader):
-        data, target = data.to(device), target.to(device)
+        img, target = img.to(device), target.to(device)
 
         pred_seg, pred_recon = model(img)
 
@@ -94,17 +102,26 @@ def test_epoch(args, model, val_loader, device, epoch):
         else:
             pred_seg, pred_recon = model(img)
  
-            loss = loss_func(vgg, pred_seg, pred_recon, target, 
+            total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
                             args.c1, args.c2, 
                             args.lambda1, args.lambda2, 
                             args.block_idx, device)
+            
+            if isinstance(total_loss, tuple):
+                loss, seg_loss, aux_loss = total_loss
+            else:
+                loss = total_loss
+                
+        losses.update(loss.item(), img.size(0))
+        #print(losses)
+        temp_ds = dice(pred_seg, target)
+        dice_scores.update(temp_ds.item(), img.size(0))
+        #print(dice_scores)
+        # TODO: add threshold value?
+        temp_ious = iou(pred_seg, target)
+        iou_scores.update(temp_ious.item(), img.size(0))
         
-        losses.update(loss.data[0], img.size(0))
-
-        dice_scores.update(dice(pred_seg, target), img.size(0))
-        iou_scores.update(iou(pred_seg, target), img.size(0))
-        
-        val_recon_imgs.extend([pred_recon[i].squeeze(0).cpu().numpy() for i in num_show])
+        val_recon_imgs.extend([pred_recon[i].squeeze(0).detach().cpu().numpy() for i in num_show])
         if batch_idx % args.log_interval == 0:
             print('Test: [{0}][{1}/{2}]\t'
                 'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
@@ -141,8 +158,12 @@ def train(args):
         model_name = 'unet'
         
     else:
-        model = MTUNet()
-        model_name = 'mtunet'
+        if args.cross_att:
+            model = MTUNet(cross_att=True)
+            model_name = 'mtunet_CA'
+        else:
+            model = MTUNet()
+            model_name = 'mtunet'
 
     model = torch.nn.DataParallel(model).to(device)
     wandb.watch(model)
@@ -194,6 +215,7 @@ if __name__=='__main__':
     parser.add_argument('--lambda2', type=float, default=1., help='weight of percep loss')
     parser.add_argument('--block_idx', type=int, nargs='+', default=[0, 1, 2],
                          help='VGG block indices to use for style loss')
+    parser.add_argument('--cross_att', action='store_true', help='use cross attention in MTUNet?')
     parser.add_argument('--unet', action='store_true', help='use UNet instead of MTUNet')
     parser.add_argument('--dev', action='store_true', help='use dev mode')
     args = parser.parse_args()
@@ -206,11 +228,11 @@ if __name__=='__main__':
     if args.train:
         if args.unet:
             wandb.init(name="Train-UNet",
-                   project="csc2516-project",
+                   project="csc2516-localtest",
                    entity=args.viz_wandb)
         else:
             wandb.init(name="Train-MTUNet",
-                    project="csc2516-project",
+                    project="csc2516-localtest",
                     entity=args.viz_wandb)
             
         wandb.config = {
