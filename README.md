@@ -17,4 +17,4 @@ After run some experiments:
 
 Train model (Local test)
  
-python main.py --train --dev --viz_wandb $our team name$
+python main.py --train --dev --viz_wandb (our team name)
