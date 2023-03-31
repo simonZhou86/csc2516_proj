@@ -14,6 +14,7 @@ import torch.nn as nn
 from torchmetrics.functional import image_gradients
 from torchvision.transforms import transforms
 import torch.nn.functional as F
+from torchmetrics import Dice
 
 class PercepHook:
     '''
@@ -257,12 +258,15 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     if generalized_dice:
         dice = GeneralizedDiceLoss()
     else:
-        dice = DiceLoss()
-    main_dice_loss = dice(predicted, mask_target)
+        #dice = DiceLoss()
+        dice = Dice().to(device)
+    main_dice_loss = 1 - dice((torch.sigmoid(predicted)), mask_target.int())
     #bce = BCELoss()
     # print("predicted type", predicted.dtype)
     # print("mask target type", mask_target.dtype)
-    main_bce_loss = F.binary_cross_entropy(predicted, mask_target, reduction='mean')
+    
+    #main_bce_loss = F.binary_cross_entropy(predicted, mask_target, reduction='mean')
+    main_bce_loss = F.binary_cross_entropy_with_logits(predicted, mask_target, reduction='mean')
     if generalized_dice:
         raise Warning("Caution! You are using BCE loss with Generalized dice loss!")
     main_loss = main_bce_loss + main_dice_loss
@@ -270,7 +274,7 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     total = c1 * (main_loss) + c2*(axu_loss)
     return total, main_loss, axu_loss
 
-def loss_unet(pred, target, devide):
+def loss_unet(pred, target, device):
     """
     loss function for unet
     """
