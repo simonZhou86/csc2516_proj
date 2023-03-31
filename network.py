@@ -494,8 +494,9 @@ class Segmentor(nn.Module):
 
         x = self.final_conv(x)
 
+        # HANDLE this when calculating loss
         # segmentation map, sigmoid maps to [0,1]
-        x = F.sigmoid(x)  # TODO: check if sigmoid is needed
+        #x = F.sigmoid(x)  # TODO: check if sigmoid is needed
 
         return x
 
@@ -563,8 +564,9 @@ class SegmentorCA(nn.Module):
 
         x = self.final_conv(x) # should be 1, 128, 128
 
+        # HANDLE this when calculating loss
         # segmentation map, sigmoid maps to [0,1]
-        x = F.sigmoid(x)  # TODO: check if sigmoid is needed
+        #x = F.sigmoid(x)  # TODO: check if sigmoid is needed
 
         return x
 
