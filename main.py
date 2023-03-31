@@ -149,7 +149,8 @@ def train(args):
                             batch_size=args.batch_size, 
                             num_workers=args.num_workers,
                             pin_memory=True,
-                            shuffle=False)
+                            shuffle=False,
+                            drop_last=True) # may solve the index error in showing val_recon_imgs described in the chat
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
