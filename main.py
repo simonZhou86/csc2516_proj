@@ -58,7 +58,7 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         dice_scores.update(temp_ds.item(), img.size(0))
         #print(dice_scores)
         # TODO: add threshold value?
-        iou_metric = JaccardIndex(num_classes=2).to(device)
+        iou_metric = JaccardIndex(task = "binary", num_classes=2).to(device)
         temp_ious = iou_metric(pred_seg, target.int())
         iou_scores.update(temp_ious.item(), img.size(0))
         #print(iou_scores)
