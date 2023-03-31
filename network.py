@@ -364,10 +364,9 @@ class Decoder(nn.Module):
         # 64 channel to 1
         self.final_conv = nn.Conv2d(64,
                                     1,
-                                    kernel_size=1,
+                                    kernel_size=3,
                                     stride=1,
-                                    padding=0,
-                                    bias=True)
+                                    padding="same")
 
     def forward(self, lat_fea):
         x = self.up1(lat_fea)
@@ -384,9 +383,9 @@ class Decoder(nn.Module):
 
         x = self.final_conv(x)
 
-        x = F.sigmoid(
-            x
-        )  # map to [0,1], range of input image is also [0,1]
+        # x = F.sigmoid(
+        #     x
+        # )  # map to [0,1], range of input image is also [0,1]
 
         return x
 
