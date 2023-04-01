@@ -13,6 +13,7 @@ from torchvision.models import vgg16_bn
 from baselines import UNet
 from dataset import BraTS_2d
 from torchmetrics import Dice, JaccardIndex
+import torch.distributed as dist
 
 vgg = vgg16_bn(pretrained=True)
 
@@ -174,7 +175,29 @@ def train(args):
                             shuffle=False,
                             drop_last=True)
     
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if torch.cuda.is_available():
+        if args.slurm:
+            ngpus_per_node = torch.cuda.device_count()
+            local_rank = int(os.environ.get("SLURM_LOCALID"))
+            
+            current_device = local_rank
+            torch.cuda.set_device(current_device)
+
+            devices = [
+                torch.device(f"cuda:{i}") for i in range(ngpus_per_node)
+            ]
+            device = devices[current_device]
+
+            rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + local_rank
+            print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
+            #init the process group
+            dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size, rank=rank)
+            print("process group ready!")
+        else:
+            device = torch.device('cuda:0')
+    else:
+        device = torch.device('cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     if args.unet:
         model = UNet()
@@ -191,7 +214,13 @@ def train(args):
             init_weights(model, init_type='kaiming')
             model_name = 'mtunet'
 
-    model = torch.nn.DataParallel(model).to(device)
+    if args.slurm and torch.cuda.is_available():
+        print('From Rank: {}, ==> Making model..'.format(rank))
+        model.to(device)
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device])
+    else:
+        model = torch.nn.DataParallel(model).to(device)
+        
     wandb.watch(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -245,6 +274,7 @@ if __name__=='__main__':
     parser.add_argument('--unet', action='store_true', help='use UNet instead of MTUNet')
     parser.add_argument('--dev', action='store_true', help='use dev mode')
     parser.add_argument('--exp_name', type=str, default='Train-UNet', help='experiment name')
+    parser.add_argument('--slurm', action='store_true',help='train on slurm server')
     args = parser.parse_args()
     if args.dev:
         args.epochs = 1
