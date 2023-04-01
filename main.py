@@ -191,7 +191,7 @@ def train(args):
             rank = int(os.environ.get("SLURM_NODEID"))*ngpus_per_node + local_rank
             print('From Rank: {}, ==> Initializing Process Group...'.format(rank))
             #init the process group
-            dist.init_process_group(backend=args.dist_backend, init_method=args.init_method, world_size=args.world_size, rank=rank)
+            dist.init_process_group(backend='nccl', init_method=args.init_method, world_size=args.world_size, rank=rank)
             print("process group ready!")
         else:
             device = torch.device('cuda:0')
@@ -275,6 +275,8 @@ if __name__=='__main__':
     parser.add_argument('--dev', action='store_true', help='use dev mode')
     parser.add_argument('--exp_name', type=str, default='Train-UNet', help='experiment name')
     parser.add_argument('--slurm', action='store_true',help='train on slurm server')
+    parser.add_argument('--world_size', type=int, default=1, help='number of nodes')
+    parser.add_argument('--init_method', default='tcp://127.0.0.1:3456', type=str, help='')
     args = parser.parse_args()
     if args.dev:
         args.epochs = 1
