@@ -11,7 +11,7 @@ preprocessed data: https://drive.google.com/drive/folders/1iEHBRF6XJ_OJPPHfQpLfg
   test_data: 67 patients, 9278 images
   
  preprocessed data(remove mask = 0): 
- https://drive.google.com/file/d/1-BUqoO215zM-zgQAzR5IFFScS1EfX6Yi/view?usp=sharing,
- https://drive.google.com/file/d/1-ErU9lUAZy7NPDkh9hBeJ1MER0vDt9MH/view?usp=sharing, 
- https://drive.google.com/file/d/1-I2UKNHBJTHxX8VMcZmkMnzAvsOmiQFP/view?usp=sharing, 
- https://drive.google.com/file/d/1-JC-3anYidVtAE6jItxFYicfJucc5Bkd/view?usp=sharing
+https://drive.google.com/drive/folders/11y98dTDVwHY1zJPP6fttOi_LVO9CRoei?usp=sharing
+train: 268 patients, 17929 images
+test: 67 patients, 4221 images
+total: 22150 images
