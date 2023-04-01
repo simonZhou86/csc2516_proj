@@ -9,3 +9,9 @@ preprocessed data: https://drive.google.com/drive/folders/1iEHBRF6XJ_OJPPHfQpLfg
   normalized between (0,1)
   train_data: 268 patients, 37024 images
   test_data: 67 patients, 9278 images
+  
+ preprocessed data(remove mask = 0): 
+https://drive.google.com/drive/folders/11y98dTDVwHY1zJPP6fttOi_LVO9CRoei?usp=sharing
+train: 268 patients, 17929 images
+test: 67 patients, 4221 images
+total: 22150 images
