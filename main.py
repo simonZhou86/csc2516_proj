@@ -244,6 +244,7 @@ if __name__=='__main__':
     parser.add_argument('--cross_att', action='store_true', help='use cross attention in MTUNet?')
     parser.add_argument('--unet', action='store_true', help='use UNet instead of MTUNet')
     parser.add_argument('--dev', action='store_true', help='use dev mode')
+    parser.add_argument('--exp_name', type=str, default='Train-UNet', help='experiment name')
     args = parser.parse_args()
     if args.dev:
         args.epochs = 1
@@ -253,11 +254,11 @@ if __name__=='__main__':
 
     if args.train:
         if args.unet:
-            wandb.init(name="Train-UNet",
+            wandb.init(name=args.exp_name,
                    project="csc2516-localtest",
                    entity=args.viz_wandb)
         else:
-            wandb.init(name="Train-MTUNet",
+            wandb.init(name=args.exp_name,
                     project="csc2516-localtest",
                     entity=args.viz_wandb)
             
