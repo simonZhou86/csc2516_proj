@@ -14,7 +14,7 @@ class BreathWise(nn.Module):
     # Breath-Wise convolution block through dilations
     # used in the breath-wise cross attention
     
-    def __init__(self, in_channel, out_channel, activation='gelu'):
+    def __init__(self, in_channel, out_channel, activation='relu'):
         super(BreathWise, self).__init__()
         
         self.d_conv1 = nn.Conv2d(in_channel, out_channel, kernel_size = 3, stride = 1, padding = "same")

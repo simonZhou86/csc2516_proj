@@ -1,8 +1,9 @@
 import torch
+import torch.nn.functional as F
 import wandb
 import argparse
 from torch.utils.data import DataLoader
-from network import MTUNet
+from network import MTUNet, init_weights
 import time
 from utils import AverageMeter
 from metrics import dice, iou
@@ -11,7 +12,11 @@ from loss import loss_func, loss_unet
 from torchvision.models import vgg16_bn
 from baselines import UNet
 from dataset import BraTS_2d
+<<<<<<< HEAD
 import torch.nn.functional as F
+=======
+from torchmetrics import Dice, JaccardIndex
+>>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
 
 vgg = vgg16_bn(pretrained=True)
 
@@ -31,7 +36,11 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
 
         img, target = img.to(device), target.to(device)
         img = img.float()
+<<<<<<< HEAD
         target = target.float()
+=======
+        target = target.float() # cause error in BCE loss if target is long
+>>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
 
         optimizer.zero_grad()
         if args.unet:
@@ -39,6 +48,7 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
+<<<<<<< HEAD
             if args.dev:
                 loss = F.binary_cross_entropy_with_logits(pred_seg, target) + F.mse_loss(pred_recon, img)
             else:
@@ -50,8 +60,30 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         losses.update(loss.data, img.size(0))
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
+=======
+ 
+            total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
+                            args.c1, args.c2, 
+                            args.lambda1, args.lambda2, 
+                            args.block_idx, device)
+            if isinstance(total_loss, tuple):
+                loss, seg_loss, aux_loss = total_loss
+            else:
+                loss = total_loss
+        
+        pred_seg = F.sigmoid(pred_seg)
+        losses.update(loss.item(), img.size(0))
+        #print(losses)
+        dice_metric = Dice().to(device)
+        temp_ds = dice_metric(pred_seg, target.int())
+        dice_scores.update(temp_ds.item(), img.size(0))
+        #print(dice_scores)
+>>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
         # TODO: add threshold value?
-        iou_scores.update(iou(pred_seg, target), img.size(0))
+        iou_metric = JaccardIndex(task = "binary", num_classes=2).to(device)
+        temp_ious = iou_metric(pred_seg, target.int())
+        iou_scores.update(temp_ious.item(), img.size(0))
+        #print(iou_scores)
 
         loss.backward()
         optimizer.step()
@@ -82,18 +114,20 @@ def test_epoch(args, model, val_loader, device, epoch):
     dice_scores = AverageMeter()
     iou_scores = AverageMeter()
 
+    val_recon_imgs = []
+    val_seg_maps = []
+    #num_show = [int(i.numpy()) for i in torch.randperm(args.batch_size)[:args.batch_size//2]]
     model.eval()
-
+    num_show = [int(i.numpy()) for i in torch.randperm(args.batch_size)[:args.batch_size//2]]
     for batch_idx, (img, target) in enumerate(val_loader):
-        data, target = data.to(device), target.to(device)
-
-        pred_seg, pred_recon = model(img)
+        img, target = img.to(device), target.to(device)
 
         if args.unet:
             pred = model(img)
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
+<<<<<<< HEAD
 
             if args.dev:
                 loss = F.binary_cross_entropy_with_logits(pred_seg, target) + F.mse_loss(pred_recon, img)
@@ -104,9 +138,33 @@ def test_epoch(args, model, val_loader, device, epoch):
                                 args.block_idx, device)
         
         losses.update(loss.data, img.size(0))
+=======
+ 
+            total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
+                            args.c1, args.c2, 
+                            args.lambda1, args.lambda2, 
+                            args.block_idx, device)
+            
+            if isinstance(total_loss, tuple):
+                loss, seg_loss, aux_loss = total_loss
+            else:
+                loss = total_loss
+        
+        pred_seg = F.sigmoid(pred_seg)
+        losses.update(loss.item(), img.size(0))
+        #print(losses)
+        dice_metric = Dice().to(device)
+        temp_ds = dice_metric(pred_seg, target.int())
+        dice_scores.update(temp_ds.item(), img.size(0))
+        #print(dice_scores)
+        # TODO: add threshold value?
+        iou_metric = JaccardIndex(task = "binary", num_classes=2).to(device)
+        temp_ious = iou_metric(pred_seg, target.int())
+        iou_scores.update(temp_ious.item(), img.size(0))
+>>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
 
-        dice_scores.update(dice(pred_seg, target), img.size(0))
-        iou_scores.update(iou(pred_seg, target), img.size(0))
+        val_recon_imgs.extend([pred_recon[i].squeeze(0).detach().cpu().numpy() for i in num_show])
+        val_seg_maps.extend([pred_seg[i].squeeze(0).detach().cpu().numpy() for i in num_show])
             
         if batch_idx % args.log_interval == 0:
             print('Test: [{0}][{1}/{2}]\t'
@@ -117,7 +175,9 @@ def test_epoch(args, model, val_loader, device, epoch):
             
     wandb.log({"val_loss_epoch": losses.avg,
                 "val_dice_epoch": dice_scores.avg,
-                "val_iou_epoch": iou_scores.avg,})
+                "val_iou_epoch": iou_scores.avg,
+                "axuilary recon images": [wandb.Image(i) for i in val_recon_imgs],
+                "pred seg masks": [wandb.Image(i) for i in val_seg_maps]})
         
     return dice_scores.avg, iou_scores.avg
 
@@ -138,17 +198,25 @@ def train(args):
                             batch_size=args.batch_size, 
                             num_workers=args.num_workers,
                             pin_memory=True,
-                            shuffle=False)
+                            shuffle=False,
+                            drop_last=True)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     if args.unet:
         model = UNet()
+        init_weights(model, init_type='kaiming')
         model_name = 'unet'
         
     else:
-        model = MTUNet()
-        model_name = 'mtunet'
+        if args.cross_att:
+            model = MTUNet(cross_att=True)
+            init_weights(model, init_type='kaiming')
+            model_name = 'mtunet_CA'
+        else:
+            model = MTUNet()
+            init_weights(model, init_type='kaiming')
+            model_name = 'mtunet'
 
     model = torch.nn.DataParallel(model).to(device)
     wandb.watch(model)
@@ -200,6 +268,7 @@ if __name__=='__main__':
     parser.add_argument('--lambda2', type=float, default=1., help='weight of percep loss')
     parser.add_argument('--block_idx', type=int, nargs='+', default=[0, 1, 2],
                          help='VGG block indices to use for style loss')
+    parser.add_argument('--cross_att', action='store_true', help='use cross attention in MTUNet?')
     parser.add_argument('--unet', action='store_true', help='use UNet instead of MTUNet')
     parser.add_argument('--dev', action='store_true', help='use dev mode')
     args = parser.parse_args()
@@ -212,11 +281,11 @@ if __name__=='__main__':
     if args.train:
         if args.unet:
             wandb.init(name="Train-UNet",
-                   project="csc2516-project",
+                   project="csc2516-localtest",
                    entity=args.viz_wandb)
         else:
             wandb.init(name="Train-MTUNet",
-                    project="csc2516-project",
+                    project="csc2516-localtest",
                     entity=args.viz_wandb)
             
         wandb.config = {

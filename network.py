@@ -364,10 +364,9 @@ class Decoder(nn.Module):
         # 64 channel to 1
         self.final_conv = nn.Conv2d(64,
                                     1,
-                                    kernel_size=1,
+                                    kernel_size=3,
                                     stride=1,
-                                    padding=0,
-                                    bias=True)
+                                    padding="same")
 
     def forward(self, lat_fea):
         x = self.up1(lat_fea)
@@ -384,9 +383,9 @@ class Decoder(nn.Module):
 
         x = self.final_conv(x)
 
-        x = F.sigmoid(
-            x
-        )  # map to [0,1], range of input image is also [0,1]
+        # x = F.sigmoid(
+        #     x
+        # )  # map to [0,1], range of input image is also [0,1]
 
         return x
 
@@ -414,43 +413,55 @@ class Transformer(nn.Module):
 
         # learnable position embedding
         self.pos_embedding = nn.Parameter(torch.randn(1, num_pixel, d_model))
+        
+        # linear proj
+        self.linear_proj = nn.Linear(d_model, d_model)
+        
+        # pe_dropout
+        self.pe_drop = nn.Dropout(p=0.1)
 
     def forward(self, x):
-        print("pre x.shape", x.shape)
+        #print("pre x.shape", x.shape)
         # x: [B, C, H, W]
         B = x.shape[0]
         C = x.shape[1]
         x = x.permute(0, 2, 3, 1).contiguous().view(B, -1, C)  # [B, H*W, C]
+        x = self.linear_proj(x)
         x = x + self.pos_embedding
-        print("post x.shape", x.shape)
+        x = self.pe_drop(x)
+        #print("post x.shape", x.shape)
         return self.transformer(x)
 
 
 # deocder - segmentation
 class Segmentor(nn.Module):
-    def __init__(self, num_cls):
+    def __init__(self, num_cls, att_type='att_unet'):
         # segmentation head to produce segmentation map
         super(Segmentor, self).__init__()
-
+        if att_type == "att_unet":
+            attModule = Attention_block
+        elif att_type == "non_local":
+            attModule = Non_local_Attn
+            raise Warning("Non-local Attention approach is not corrected in the forward method yet!, just a placeholder for now") 
         # 8 ->16
         self.up5 = up_conv(1024, 512)
         self.upconv5 = conv_block(1024, 512)
-        self.att5 = Attention_block(512, 512, 256)
+        self.att5 = attModule(512, 512, 256)
 
         # 16 -> 32
         self.up4 = up_conv(512, 256)
         self.upconv4 = conv_block(512, 256)
-        self.att4 = Attention_block(256, 256, 128)
+        self.att4 = attModule(256, 256, 128)
 
         # 32-> 64
         self.up3 = up_conv(256, 128)
         self.upconv3 = conv_block(256, 128)
-        self.att3 = Attention_block(128, 128, 64)
+        self.att3 = attModule(128, 128, 64)
 
         # 64 -> 128
         self.up2 = up_conv(128, 64)
         self.upconv2 = conv_block(128, 64)
-        self.att2 = Attention_block(64, 64, 32)
+        self.att2 = attModule(64, 64, 32)
 
         # 64 channel to 1
         self.final_conv = nn.Conv2d(64,
@@ -483,8 +494,9 @@ class Segmentor(nn.Module):
 
         x = self.final_conv(x)
 
+        # HANDLE this when calculating loss
         # segmentation map, sigmoid maps to [0,1]
-        x = self.seg_act(x)  # TODO: check if sigmoid is needed
+        #x = F.sigmoid(x)  # TODO: check if sigmoid is needed
 
         return x
 
@@ -552,8 +564,9 @@ class SegmentorCA(nn.Module):
 
         x = self.final_conv(x) # should be 1, 128, 128
 
+        # HANDLE this when calculating loss
         # segmentation map, sigmoid maps to [0,1]
-        x = self.seg_act(x)  # TODO: check if sigmoid is needed
+        #x = F.sigmoid(x)  # TODO: check if sigmoid is needed
 
         return x
 
@@ -565,6 +578,7 @@ class MTUNet(nn.Module):
         self.encoder = Encoder()
         self.transformer = Transformer()
         self.decoder = Decoder()
+        self.post_norm = nn.LayerNorm(1024)
         # whether we want to use cross attention module
         if cross_att:
             self.segmentor = SegmentorCA(num_cls)
@@ -575,6 +589,7 @@ class MTUNet(nn.Module):
         lat_feat, concat_feats = self.encoder(x)
         B, C, H, W  = lat_feat.shape
         lat_feat = self.transformer(lat_feat)
+        lat_feat = self.post_norm(lat_feat)
         lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
         seg_map = self.segmentor(lat_feat, concat_feats)
         rec_img = self.decoder(lat_feat)
