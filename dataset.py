@@ -10,10 +10,11 @@ import torchvision.transforms as transforms
 import os
 
 class BraTS_2d(Dataset):
-    def __init__(self, data_dir, mode='train', transform=None):
+    def __init__(self, data_dir, mode='train', transform=None, dev=False):
         self.data_dir = data_dir
         self.mode = mode
         self.transform = transform
+        self.dev = dev
         # add transformation method
         self.need_transform = True
         if self.transform is None:
@@ -42,6 +43,12 @@ class BraTS_2d(Dataset):
             self.masks = torch.load(os.path.join(self.data_dir, 'test_mask.pt'))
         else:
             raise ValueError('mode should be train or test')
+        
+        if self.dev:
+            torch.manual_seed(0)
+            index = torch.randint(0, self.imgs.shape[0], (10, ))
+            self.imgs = self.imgs[index]
+            self.masks = self.masks[index]
         
     def __len__(self):
         return self.imgs.shape[0]

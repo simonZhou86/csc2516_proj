@@ -1,5 +1,21 @@
 import torch
 
+def filter_by_mask(pred, mask):
+    # filter out imgs that mask is all 0
+    # pred: N,C,H,W
+    # mask: N,C,H,W
+
+    # sum mask over all c, x, y
+    mask_sum = torch.sum(mask, dim=(1, 2, 3)) # N
+
+    # filter out imgs that mask is all 0
+    mask_sum = mask_sum > 0 # N
+
+    pred = pred[mask_sum] # N',C,H,W
+    mask = mask[mask_sum] # N',C,H,W
+
+    return pred, mask
+
 
 def _threshold(x, threshold=None):
     if threshold is not None:

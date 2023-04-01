@@ -6,17 +6,13 @@ from torch.utils.data import DataLoader
 from network import MTUNet, init_weights
 import time
 from utils import AverageMeter
-from metrics import dice, iou
+from metrics import dice, iou, filter_by_mask
 import os
 from loss import loss_func, loss_unet
 from torchvision.models import vgg16_bn
 from baselines import UNet
 from dataset import BraTS_2d
-<<<<<<< HEAD
-import torch.nn.functional as F
-=======
 from torchmetrics import Dice, JaccardIndex
->>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
 
 vgg = vgg16_bn(pretrained=True)
 
@@ -36,11 +32,7 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
 
         img, target = img.to(device), target.to(device)
         img = img.float()
-<<<<<<< HEAD
-        target = target.float()
-=======
         target = target.float() # cause error in BCE loss if target is long
->>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
 
         optimizer.zero_grad()
         if args.unet:
@@ -48,19 +40,6 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
-<<<<<<< HEAD
-            if args.dev:
-                loss = F.binary_cross_entropy_with_logits(pred_seg, target) + F.mse_loss(pred_recon, img)
-            else:
-                loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
-                                args.c1, args.c2, 
-                                args.lambda1, args.lambda2, 
-                                args.block_idx, device)
-        
-        losses.update(loss.data, img.size(0))
-
-        dice_scores.update(dice(pred_seg, target), img.size(0))
-=======
  
             total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
                             args.c1, args.c2, 
@@ -78,11 +57,16 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         temp_ds = dice_metric(pred_seg, target.int())
         dice_scores.update(temp_ds.item(), img.size(0))
         #print(dice_scores)
->>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
         # TODO: add threshold value?
         iou_metric = JaccardIndex(task = "binary", num_classes=2).to(device)
-        temp_ious = iou_metric(pred_seg, target.int())
-        iou_scores.update(temp_ious.item(), img.size(0))
+
+        filtered_pred, filtered_target = filter_by_mask(pred_seg, target.int())
+        if filtered_pred.shape[0] == 0:
+            temp_ious = 0
+            iou_scores.update(0., 0)
+        else:
+            temp_ious = iou_metric(filtered_pred, filtered_target)
+            iou_scores.update(temp_ious.item(), filtered_pred.size(0))
         #print(iou_scores)
 
         loss.backward()
@@ -127,18 +111,6 @@ def test_epoch(args, model, val_loader, device, epoch):
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
-<<<<<<< HEAD
-
-            if args.dev:
-                loss = F.binary_cross_entropy_with_logits(pred_seg, target) + F.mse_loss(pred_recon, img)
-            else:
-                loss = loss_func(vgg, pred_seg, pred_recon, target, 
-                                args.c1, args.c2, 
-                                args.lambda1, args.lambda2, 
-                                args.block_idx, device)
-        
-        losses.update(loss.data, img.size(0))
-=======
  
             total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
                             args.c1, args.c2, 
@@ -159,9 +131,13 @@ def test_epoch(args, model, val_loader, device, epoch):
         #print(dice_scores)
         # TODO: add threshold value?
         iou_metric = JaccardIndex(task = "binary", num_classes=2).to(device)
-        temp_ious = iou_metric(pred_seg, target.int())
-        iou_scores.update(temp_ious.item(), img.size(0))
->>>>>>> 48acffee641ef800407fd46694735b2ec9d0105e
+        filtered_pred, filtered_target = filter_by_mask(pred_seg, target.int())
+        if filtered_pred.shape[0] == 0:
+            temp_ious = 0
+            iou_scores.update(0., 0)
+        else:
+            temp_ious = iou_metric(filtered_pred, filtered_target)
+            iou_scores.update(temp_ious.item(), filtered_pred.size(0))
 
         val_recon_imgs.extend([pred_recon[i].squeeze(0).detach().cpu().numpy() for i in num_show])
         val_seg_maps.extend([pred_seg[i].squeeze(0).detach().cpu().numpy() for i in num_show])
@@ -182,11 +158,8 @@ def test_epoch(args, model, val_loader, device, epoch):
     return dice_scores.avg, iou_scores.avg
 
 def train(args):
-    train_dataset = BraTS_2d(args.data_dir, mode='train')
-    val_dataset = BraTS_2d(args.data_dir, mode='val')
-    if args.dev:
-        train_dataset = train_dataset[:10]
-        val_dataset = val_dataset[:10]
+    train_dataset = BraTS_2d(args.data_dir, mode='train', dev=args.dev)
+    val_dataset = BraTS_2d(args.data_dir, mode='val', dev=args.dev)
         
     train_loader = DataLoader(train_dataset, 
                               batch_size=args.batch_size, 
@@ -234,7 +207,7 @@ def train(args):
         torch.save(model.state_dict(), os.path.join(args.save_dir, f'{model_name}_{epoch}.pth'))
 
 def test(args):
-    test_dataset = BraTS_2d(args.data_dir, mode='test')
+    test_dataset = BraTS_2d(args.data_dir, mode='test', dev=args.dev)
     test_loader = DataLoader(test_dataset,
                             batch_size=args.batch_size,
                             num_workers=args.num_workers,
