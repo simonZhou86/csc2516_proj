@@ -11,6 +11,7 @@ from loss import loss_func, loss_unet
 from torchvision.models import vgg16_bn
 from baselines import UNet
 from dataset import BraTS_2d
+import torch.nn.functional as F
 
 vgg = vgg16_bn(pretrained=True)
 
@@ -30,7 +31,7 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
 
         img, target = img.to(device), target.to(device)
         img = img.float()
-        target = target.long()
+        target = target.float()
 
         optimizer.zero_grad()
         if args.unet:
@@ -38,13 +39,15 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
- 
-            loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
-                            args.c1, args.c2, 
-                            args.lambda1, args.lambda2, 
-                            args.block_idx, device)
+            if args.dev:
+                loss = F.binary_cross_entropy_with_logits(pred_seg, target) + F.mse_loss(pred_recon, img)
+            else:
+                loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
+                                args.c1, args.c2, 
+                                args.lambda1, args.lambda2, 
+                                args.block_idx, device)
         
-        losses.update(loss.data[0], img.size(0))
+        losses.update(loss.data, img.size(0))
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
         # TODO: add threshold value?
@@ -91,13 +94,16 @@ def test_epoch(args, model, val_loader, device, epoch):
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
- 
-            loss = loss_func(vgg, pred_seg, pred_recon, target, 
-                            args.c1, args.c2, 
-                            args.lambda1, args.lambda2, 
-                            args.block_idx, device)
+
+            if args.dev:
+                loss = F.binary_cross_entropy_with_logits(pred_seg, target) + F.mse_loss(pred_recon, img)
+            else:
+                loss = loss_func(vgg, pred_seg, pred_recon, target, 
+                                args.c1, args.c2, 
+                                args.lambda1, args.lambda2, 
+                                args.block_idx, device)
         
-        losses.update(loss.data[0], img.size(0))
+        losses.update(loss.data, img.size(0))
 
         dice_scores.update(dice(pred_seg, target), img.size(0))
         iou_scores.update(iou(pred_seg, target), img.size(0))
@@ -118,6 +124,10 @@ def test_epoch(args, model, val_loader, device, epoch):
 def train(args):
     train_dataset = BraTS_2d(args.data_dir, mode='train')
     val_dataset = BraTS_2d(args.data_dir, mode='val')
+    if args.dev:
+        train_dataset = train_dataset[:10]
+        val_dataset = val_dataset[:10]
+        
     train_loader = DataLoader(train_dataset, 
                               batch_size=args.batch_size, 
                               num_workers=args.num_workers,
