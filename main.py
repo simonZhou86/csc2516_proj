@@ -273,7 +273,7 @@ if __name__=='__main__':
     parser.add_argument('--cross_att', action='store_true', help='use cross attention in MTUNet?')
     parser.add_argument('--unet', action='store_true', help='use UNet instead of MTUNet')
     parser.add_argument('--dev', action='store_true', help='use dev mode')
-    parser.add_argument('--exp_name', type=str, default='Train-UNet', help='experiment name')
+    parser.add_argument('--exp_name', type=str, default='Train-', help='experiment name')
     parser.add_argument('--slurm', action='store_true',help='train on slurm server')
     parser.add_argument('--world_size', type=int, default=1, help='number of nodes')
     parser.add_argument('--init_method', default='tcp://127.0.0.1:3456', type=str, help='')
@@ -286,11 +286,11 @@ if __name__=='__main__':
 
     if args.train:
         if args.unet:
-            wandb.init(name=args.exp_name,
+            wandb.init(name=args.exp_name + 'UNet',
                    project="csc2516-localtest",
                    entity=args.viz_wandb)
         else:
-            wandb.init(name=args.exp_name,
+            wandb.init(name=args.exp_name + 'MTUNet',
                     project="csc2516-localtest",
                     entity=args.viz_wandb)
             
