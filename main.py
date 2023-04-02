@@ -38,6 +38,7 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
         optimizer.zero_grad()
         if args.unet:
             pred = model(img)
+            pred = F.sigmoid(pred)
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
@@ -109,6 +110,7 @@ def test_epoch(args, model, val_loader, device, epoch):
 
         if args.unet:
             pred = model(img)
+            pred = F.sigmoid(pred)
             loss = loss_unet(pred, target, device)
         else:
             pred_seg, pred_recon = model(img)
