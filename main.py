@@ -140,7 +140,9 @@ def test_epoch(args, model, val_loader, device, epoch):
             temp_ious = iou_metric(filtered_pred, filtered_target)
             iou_scores.update(temp_ious.item(), filtered_pred.size(0))
 
-        val_recon_imgs.extend([pred_recon[i].squeeze(0).detach().cpu().numpy() for i in num_show])
+        if not args.unet:
+            val_recon_imgs.extend([pred_recon[i].squeeze(0).detach().cpu().numpy() for i in num_show])
+        
         val_seg_maps.extend([pred_seg[i].squeeze(0).detach().cpu().numpy() for i in num_show])
             
         if batch_idx % args.log_interval == 0:
@@ -149,12 +151,17 @@ def test_epoch(args, model, val_loader, device, epoch):
                 'Dice Score {dice.val:.3f} ({dice.avg:.3f})'
                 'IOU Score {iou.val:.3f} ({iou.avg:.3f})'.format(
                     epoch, batch_idx, len(val_loader), loss=losses, dice=dice_scores, iou=iou_scores))
-            
-    wandb.log({"val_loss_epoch": losses.avg,
-                "val_dice_epoch": dice_scores.avg,
-                "val_iou_epoch": iou_scores.avg,
-                "axuilary recon images": [wandb.Image(i) for i in val_recon_imgs],
-                "pred seg masks": [wandb.Image(i) for i in val_seg_maps]})
+    if not args.unet:        
+        wandb.log({"val_loss_epoch": losses.avg,
+                    "val_dice_epoch": dice_scores.avg,
+                    "val_iou_epoch": iou_scores.avg,
+                    "axuilary recon images": [wandb.Image(i) for i in val_recon_imgs],
+                    "pred seg masks": [wandb.Image(i) for i in val_seg_maps]})
+    else:
+        wandb.log({"val_loss_epoch": losses.avg,
+                    "val_dice_epoch": dice_scores.avg,
+                    "val_iou_epoch": iou_scores.avg,
+                    "pred seg masks": [wandb.Image(i) for i in val_seg_maps]})
         
     return dice_scores.avg, iou_scores.avg
 
