@@ -37,12 +37,12 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
 
         optimizer.zero_grad()
         if args.unet:
-            pred = model(img)
-            pred = F.sigmoid(pred)
-            loss = loss_unet(pred, target, device)
+            pred_seg = model(img)
+            pred_seg = F.sigmoid(pred_seg)
+            loss = loss_unet(pred_seg, target, device)
         else:
             pred_seg, pred_recon = model(img)
- 
+            pred_seg = F.sigmoid(pred_seg)
             total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
                             args.c1, args.c2, 
                             args.lambda1, args.lambda2, 
@@ -52,7 +52,6 @@ def train_epoch(args, model, train_loader, optimizer, scheduler, device, epoch):
             else:
                 loss = total_loss
         
-        pred_seg = F.sigmoid(pred_seg)
         losses.update(loss.item(), img.size(0))
         #print(losses)
         dice_metric = Dice().to(device)
@@ -109,12 +108,12 @@ def test_epoch(args, model, val_loader, device, epoch):
         img, target = img.to(device), target.to(device)
 
         if args.unet:
-            pred = model(img)
-            pred = F.sigmoid(pred)
-            loss = loss_unet(pred, target, device)
+            pred_seg = model(img)
+            pred_seg = F.sigmoid(pred_seg)
+            loss = loss_unet(pred_seg, target, device)
         else:
             pred_seg, pred_recon = model(img)
- 
+            pred_seg = F.sigmoid(pred_seg)
             total_loss = loss_func(vgg, pred_seg, pred_recon, img, target, 
                             args.c1, args.c2, 
                             args.lambda1, args.lambda2, 
@@ -125,7 +124,6 @@ def test_epoch(args, model, val_loader, device, epoch):
             else:
                 loss = total_loss
         
-        pred_seg = F.sigmoid(pred_seg)
         losses.update(loss.item(), img.size(0))
         #print(losses)
         dice_metric = Dice().to(device)
