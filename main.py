@@ -224,7 +224,7 @@ def train(args):
     if args.slurm and torch.cuda.is_available():
         print('From Rank: {}, ==> Making model..'.format(rank))
         model.to(device)
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device])
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[current_device], find_unused_parameters=True)
     else:
         model = torch.nn.DataParallel(model).to(device)
         
