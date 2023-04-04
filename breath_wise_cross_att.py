@@ -115,15 +115,9 @@ class BreathWiseCrossAttention(nn.Module):
         
         y = torch.mul(y, s_enc) # get attention features
         
-<<<<<<< Updated upstream
-        print(y.shape, y_orig.shape) # debug, check the shape
-        
-        y = self.bw_block(y + y_orig) # breath-wise block
-=======
         #print(y.shape, y_orig.shape) # debug, check the shape
         #print(y.shape)
         # whether we need residual for s + y?
         y = self.bw_block(y + s_enc)# + y_orig) # breath-wise block
->>>>>>> Stashed changes
         
         return y
