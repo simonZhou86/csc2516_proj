@@ -573,11 +573,14 @@ class SegmentorCA(nn.Module):
 class MTUNet(nn.Module):
     # Multi-task Transformer U-Net
 
-    def __init__(self, num_cls=1, cross_att = False): #TODO: check aross_att
+    def __init__(self, num_cls=1, cross_att = False, recon=True): #TODO: check aross_att
         super(MTUNet, self).__init__()
         self.encoder = Encoder()
         self.transformer = Transformer()
-        self.decoder = Decoder()
+        self.recon = recon
+        if recon:
+            self.decoder = Decoder()
+
         self.post_norm = nn.LayerNorm(1024)
         # whether we want to use cross attention module
         if cross_att:
@@ -592,5 +595,8 @@ class MTUNet(nn.Module):
         lat_feat = self.post_norm(lat_feat)
         lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
         seg_map = self.segmentor(lat_feat, concat_feats)
-        rec_img = self.decoder(lat_feat)
+        if self.recon:
+            rec_img = self.decoder(lat_feat)
+        else:
+            rec_img = None
         return seg_map, rec_img

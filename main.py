@@ -217,7 +217,7 @@ def train(args):
             init_weights(model, init_type='kaiming')
             model_name = 'mtunet_CA'
         else:
-            model = MTUNet()
+            model = MTUNet(recon=(not args.no_recon))
             init_weights(model, init_type='kaiming')
             model_name = 'mtunet'
 
@@ -284,6 +284,7 @@ if __name__=='__main__':
     parser.add_argument('--slurm', action='store_true',help='train on slurm server')
     parser.add_argument('--world_size', type=int, default=1, help='number of nodes')
     parser.add_argument('--init_method', default='tcp://127.0.0.1:3456', type=str, help='')
+    parser.add_argument('--no_recon', action='store_true', help='do not use reconstruction loss')
     args = parser.parse_args()
     if args.dev:
         args.epochs = 1

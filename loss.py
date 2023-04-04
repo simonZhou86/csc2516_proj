@@ -252,9 +252,11 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     img_grad_loss = grad_loss(device)
     #L1_charbonnier = L1_Charbonnier_loss()
     #reg_loss = L1_charbonnier(predicted, target)
-    reg_loss = mse_loss(reconstructed, recon_target)
-    img_grad_dif = img_grad_loss(reconstructed, recon_target)
-    percep = perceptual_loss(vgg, reconstructed, recon_target, block_idx, device)
+    if reconstructed != None:
+        reg_loss = mse_loss(reconstructed, recon_target)
+        img_grad_dif = img_grad_loss(reconstructed, recon_target)
+        percep = perceptual_loss(vgg, reconstructed, recon_target, block_idx, device)
+
     if generalized_dice:
         dice = GeneralizedDiceLoss()
     else:
@@ -270,7 +272,11 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     if generalized_dice:
         raise Warning("Caution! You are using BCE loss with Generalized dice loss!")
     main_loss = main_bce_loss + main_dice_loss
-    axu_loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
+    if reconstructed != None:
+        axu_loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
+    else:
+        axu_loss = 0.
+
     total = c1 * (main_loss) + c2*(axu_loss)
     return total, main_loss, axu_loss
 
