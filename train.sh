@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes 1
-#SBATCH --gres=gpu:2 # Request GPU "generic resources"
-#SBATCH --cpus-per-task=2 # Cores proportional to GPUs: 6 on Cedar, 16 on Graham.
+#SBATCH --gres=gpu:p100:2 # Request GPU "generic resources"
+#SBATCH --cpus-per-task=32 # Cores proportional to GPUs: 6 on Cedar, 16 on Graham.
 #SBATCH --tasks-per-node=2
 #SBATCH --mem=126000M # Memory proportional to GPUs: 32000 Cedar, 64000 Graham.
 #SBATCH --job-name=train_trail1

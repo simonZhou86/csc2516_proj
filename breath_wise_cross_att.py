@@ -120,6 +120,6 @@ class BreathWiseCrossAttention(nn.Module):
         #print(y.shape, y_orig.shape) # debug, check the shape
         #print(y.shape)
         # whether we need residual for s + y?
-        y = self.bw_block(y)# + y_orig) # breath-wise block
+        y = self.bw_block(y + s_enc) # breath-wise block
         
         return y
