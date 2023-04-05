@@ -21,4 +21,4 @@ export MASTER_ADDR=$(hostname) #Store the master node’s IP address in the MAST
 echo "r$SLURM_NODEID master: $MASTER_ADDR"
 echo "r$SLURM_NODEID Launching python script"
 
-srun python3 main.py --train --viz_wandb csc2516_proj --c2 0.2 --lambda1 0.2 --lambda2 0.2 --cross_att --slurm --world_size 2 --init_method tcp://$MASTER_ADDR:3456
+srun python main.py --train --viz_wandb csc2516_proj --lr 0.0001 --batch_size 32 --c2 0.2 --lambda1 0.2 --lambda2 0.2 --cross_att --slurm --world_size 2 --init_method tcp://$MASTER_ADDR:3456
