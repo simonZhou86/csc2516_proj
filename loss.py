@@ -15,6 +15,7 @@ from torchmetrics.functional import image_gradients
 from torchvision.transforms import transforms
 import torch.nn.functional as F
 from torchmetrics import Dice
+from metrics import _threshold
 
 class PercepHook:
     '''
@@ -247,22 +248,22 @@ def perceptual_loss(vgg, predicted, target, block_idx, device):
 def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, lambda1, lambda2, block_idx, device, generalized_dice = False):
     """
     final loss function:
+    predicted: logits after sigmoid, but not binarized!
     weighted sum of main loss and auxiliary loss
     """
     img_grad_loss = grad_loss(device)
+    predicted_bin = _threshold(predicted, 0.5) # binarized
     #L1_charbonnier = L1_Charbonnier_loss()
     #reg_loss = L1_charbonnier(predicted, target)
-    if reconstructed != None:
-        reg_loss = mse_loss(reconstructed, recon_target)
-        img_grad_dif = img_grad_loss(reconstructed, recon_target)
-        percep = perceptual_loss(vgg, reconstructed, recon_target, block_idx, device)
-
+    reg_loss = mse_loss(reconstructed, recon_target)
+    img_grad_dif = img_grad_loss(reconstructed, recon_target)
+    percep = perceptual_loss(vgg, reconstructed, recon_target, block_idx, device)
     if generalized_dice:
         dice = GeneralizedDiceLoss()
     else:
         #dice = DiceLoss()
         dice = Dice().to(device)
-    main_dice_loss = 1 - dice((torch.sigmoid(predicted)), mask_target.int())
+    main_dice_loss = 1 - dice(predicted_bin, mask_target.int())
     #bce = BCELoss()
     # print("predicted type", predicted.dtype)
     # print("mask target type", mask_target.dtype)
@@ -272,11 +273,7 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     if generalized_dice:
         raise Warning("Caution! You are using BCE loss with Generalized dice loss!")
     main_loss = main_bce_loss + main_dice_loss
-    if reconstructed != None:
-        axu_loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
-    else:
-        axu_loss = 0.
-
+    axu_loss = reg_loss + lambda1 * img_grad_dif + lambda2 * percep
     total = c1 * (main_loss) + c2*(axu_loss)
     return total, main_loss, axu_loss
 
