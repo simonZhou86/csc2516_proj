@@ -268,8 +268,8 @@ def loss_func(vgg, predicted, reconstructed, recon_target, mask_target, c1, c2, 
     # print("predicted type", predicted.dtype)
     # print("mask target type", mask_target.dtype)
     
-    #main_bce_loss = F.binary_cross_entropy(predicted, mask_target, reduction='mean')
-    main_bce_loss = F.binary_cross_entropy_with_logits(predicted, mask_target, reduction='mean')
+    main_bce_loss = F.binary_cross_entropy(predicted, mask_target, reduction='mean')
+    #main_bce_loss = F.binary_cross_entropy_with_logits(predicted, mask_target, reduction='mean')
     if generalized_dice:
         raise Warning("Caution! You are using BCE loss with Generalized dice loss!")
     main_loss = main_bce_loss + main_dice_loss
