@@ -31,6 +31,7 @@ class BreathWise(nn.Module):
             raise NotImplementedError
         
         self.dropout = nn.Dropout(0.1)
+        self.bn = nn.BatchNorm2d(out_channel)
         
     
     def forward(self, x):
@@ -51,8 +52,8 @@ class BreathWise(nn.Module):
         #print("x3: ", x3.shape)
         x_all = x1 + x2 + x3 # element wise add
         x_all = self.final_conv(x_all)
+        x_all = self.bn(x_all)
         x_all = self.actf(x_all)
-        x_all = self.dropout(x_all)
         
         return x_all        
     
