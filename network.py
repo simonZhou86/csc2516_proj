@@ -33,8 +33,8 @@ def init_weights(net, init_type='normal', gain=0.02):
             elif init_type == 'orthogonal':
                 nn.init.orthogonal_(m.weight.data, gain=gain)
             else:
-                raise NotImplementedError(
-                    'initialization method [%s] is not implemented' % init_type)
+                raise NotImplementedError('initialization method [%s] is not implemented' %
+                                          init_type)
             if hasattr(m, 'bias') and m.bias is not None:
                 nn.init.constant_(m.bias.data, 0.0)
         elif classname.find('BatchNorm2d') != -1:
@@ -48,10 +48,7 @@ def init_weights(net, init_type='normal', gain=0.02):
 class GroupNorm(nn.Module):
     def __init__(self, channels):
         super(GroupNorm, self).__init__()
-        self.gn = nn.GroupNorm(num_groups=32,
-                               num_channels=channels,
-                               eps=1e-6,
-                               affine=True)
+        self.gn = nn.GroupNorm(num_groups=32, num_channels=channels, eps=1e-6, affine=True)
 
     def forward(self, x):
         return self.gn(x)
@@ -70,10 +67,7 @@ class Norm_layer(nn.Module):
         self.type = type
 
         if type == "group":
-            self.norm = nn.GroupNorm(num_groups=32,
-                                     num_channels=channels,
-                                     eps=1e-6,
-                                     affine=True)
+            self.norm = nn.GroupNorm(num_groups=32, num_channels=channels, eps=1e-6, affine=True)
         elif type == "batch":
             self.norm = nn.BatchNorm2d(channels)
         elif type == "instance":
@@ -81,8 +75,7 @@ class Norm_layer(nn.Module):
         elif type == "layer":
             self.norm = nn.LayerNorm(channels, eps=1e-5)
         else:
-            raise NotImplementedError(
-                "normalization layer [%s] is not implemented!" % type)
+            raise NotImplementedError("normalization layer [%s] is not implemented!" % type)
 
     def forward(self, x):
         return self.norm(x)
@@ -114,18 +107,10 @@ class conv_block(nn.Module):
     def __init__(self, ch_in, ch_out):
         super(conv_block, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(ch_in,
-                      ch_out,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      bias=True), nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True),
-            nn.Conv2d(ch_out,
-                      ch_out,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      bias=True), nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True))
+            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True),
+            nn.Conv2d(ch_out, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True))
 
     def forward(self, x):
         x = self.conv(x)
@@ -138,12 +123,8 @@ class down_conv(nn.Module):
         super(down_conv, self).__init__()
 
         self.down = nn.Sequential(
-            nn.Conv2d(ch_in,
-                      ch_out,
-                      kernel_size=3,
-                      stride=2,
-                      padding=1,
-                      bias=True), nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True))
+            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=2, padding=1, bias=True),
+            nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True))
 
     def forward(self, x):
         x = self.down(x)
@@ -156,12 +137,8 @@ class up_conv(nn.Module):
         super(up_conv, self).__init__()
         self.up = nn.Sequential(
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(ch_in,
-                      ch_out,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      bias=True), nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True))
+            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.BatchNorm2d(ch_out), nn.ReLU(inplace=True))
 
     def forward(self, x):
         x = self.up(x)
@@ -173,16 +150,15 @@ class Attention_block(nn.Module):
     def __init__(self, F_g, F_l, F_int):
         super(Attention_block, self).__init__()
         self.W_g = nn.Sequential(
-            nn.Conv2d(F_g, F_int, kernel_size=1, stride=1, padding=0,
-                      bias=True), nn.BatchNorm2d(F_int))
+            nn.Conv2d(F_g, F_int, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(F_int))
 
         self.W_x = nn.Sequential(
-            nn.Conv2d(F_l, F_int, kernel_size=1, stride=1, padding=0,
-                      bias=True), nn.BatchNorm2d(F_int))
+            nn.Conv2d(F_l, F_int, kernel_size=1, stride=1, padding=0, bias=True),
+            nn.BatchNorm2d(F_int))
 
-        self.psi = nn.Sequential(
-            nn.Conv2d(F_int, 1, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.BatchNorm2d(1), nn.Sigmoid())
+        self.psi = nn.Sequential(nn.Conv2d(F_int, 1, kernel_size=1, stride=1, padding=0, bias=True),
+                                 nn.BatchNorm2d(1), nn.Sigmoid())
 
         self.relu = nn.ReLU(inplace=True)
 
@@ -230,29 +206,23 @@ class Non_local_Attn(nn.Module):
 
 
 class ChannelGate(nn.Module):
-    def __init__(self,
-                 gate_channels,
-                 reduction_ratio=16,
-                 pool_types=['avg', 'max']):
+    def __init__(self, gate_channels, reduction_ratio=16, pool_types=['avg', 'max']):
         super(ChannelGate, self).__init__()
         self.gate_channels = gate_channels
-        self.mlp = nn.Sequential(
-            nn.Linear(gate_channels,
-                      gate_channels // reduction_ratio), nn.ReLU(),
-            nn.Linear(gate_channels // reduction_ratio, gate_channels))
+        self.mlp = nn.Sequential(nn.Linear(gate_channels, gate_channels // reduction_ratio),
+                                 nn.ReLU(),
+                                 nn.Linear(gate_channels // reduction_ratio, gate_channels))
         self.pool_types = pool_types
 
     def forward(self, x):
         channel_att_sum = None
         for pool_type in self.pool_types:
             if pool_type == 'avg':
-                avg_pool = F.avg_pool2d(x, (x.size(2), x.size(3)),
-                                        stride=(x.size(2), x.size(3)))
+                avg_pool = F.avg_pool2d(x, (x.size(2), x.size(3)), stride=(x.size(2), x.size(3)))
                 avg_pool = avg_pool.view(avg_pool.size(0), -1)
                 channel_att_raw = self.mlp(avg_pool)
             elif pool_type == 'max':
-                max_pool = F.max_pool2d(x, (x.size(2), x.size(3)),
-                                        stride=(x.size(2), x.size(3)))
+                max_pool = F.max_pool2d(x, (x.size(2), x.size(3)), stride=(x.size(2), x.size(3)))
                 max_pool = avg_pool.view(avg_pool.size(0), -1)
                 channel_att_raw = self.mlp(max_pool)
 
@@ -261,16 +231,13 @@ class ChannelGate(nn.Module):
             else:
                 channel_att_sum += channel_att_raw
 
-        scale = F.sigmoid(channel_att_sum).unsqueeze(2).unsqueeze(3).expand_as(
-            x)
+        scale = F.sigmoid(channel_att_sum).unsqueeze(2).unsqueeze(3).expand_as(x)
         return x * scale
 
 
 class ChannelPool(nn.Module):
     def forward(self, x):
-        return torch.cat(
-            (torch.max(x, 1)[0].unsqueeze(1), torch.mean(x, 1).unsqueeze(1)),
-            dim=1)
+        return torch.cat((torch.max(x, 1)[0].unsqueeze(1), torch.mean(x, 1).unsqueeze(1)), dim=1)
 
 
 class SpatialGate(nn.Module):
@@ -290,13 +257,9 @@ class SpatialGate(nn.Module):
 class SpatialAttn(nn.Module):
     # spatial attention module
     # ref: https://arxiv.org/abs/1807.06521
-    def __init__(self,
-                 gate_channels,
-                 reduction_ratio=16,
-                 pool_types=["avg", "max"]):
+    def __init__(self, gate_channels, reduction_ratio=16, pool_types=["avg", "max"]):
         super(SpatialAttn, self).__init__()
-        self.ChannelGate = ChannelGate(gate_channels, reduction_ratio,
-                                       pool_types)
+        self.ChannelGate = ChannelGate(gate_channels, reduction_ratio, pool_types)
         self.SpatialGate = SpatialGate()
 
     def forward(self, x):
@@ -362,11 +325,7 @@ class Decoder(nn.Module):
         self.upconv4 = conv_block(64, 64)
 
         # 64 channel to 1
-        self.final_conv = nn.Conv2d(64,
-                                    1,
-                                    kernel_size=3,
-                                    stride=1,
-                                    padding="same")
+        self.final_conv = nn.Conv2d(64, 1, kernel_size=3, stride=1, padding="same")
 
     def forward(self, lat_fea):
         x = self.up1(lat_fea)
@@ -408,15 +367,14 @@ class Transformer(nn.Module):
                                                             batch_first=True,
                                                             norm_first=True)
 
-        self.transformer = nn.TransformerEncoder(self.transformer_layer,
-                                                 num_layers)
+        self.transformer = nn.TransformerEncoder(self.transformer_layer, num_layers)
 
         # learnable position embedding
         self.pos_embedding = nn.Parameter(torch.randn(1, num_pixel, d_model))
-        
+
         # linear proj
         self.linear_proj = nn.Linear(d_model, d_model)
-        
+
         # pe_dropout
         self.pe_drop = nn.Dropout(p=0.1)
 
@@ -442,7 +400,9 @@ class Segmentor(nn.Module):
             attModule = Attention_block
         elif att_type == "non_local":
             attModule = Non_local_Attn
-            raise Warning("Non-local Attention approach is not corrected in the forward method yet!, just a placeholder for now") 
+            raise Warning(
+                "Non-local Attention approach is not corrected in the forward method yet!, just a placeholder for now"
+            )
         # 8 ->16
         self.up5 = up_conv(1024, 512)
         self.upconv5 = conv_block(1024, 512)
@@ -464,12 +424,7 @@ class Segmentor(nn.Module):
         self.att2 = attModule(64, 64, 32)
 
         # 64 channel to 1
-        self.final_conv = nn.Conv2d(64,
-                                    num_cls,
-                                    kernel_size=1,
-                                    stride=1,
-                                    padding=0,
-                                    bias=True)
+        self.final_conv = nn.Conv2d(64, num_cls, kernel_size=1, stride=1, padding=0, bias=True)
         self.seg_act = nn.Sigmoid()
 
     def forward(self, lat_feat, concat_feats):
@@ -500,6 +455,7 @@ class Segmentor(nn.Module):
 
         return x
 
+
 # sgegmentation head using cross attention module
 class SegmentorCA(nn.Module):
     def __init__(self, num_cls):
@@ -509,16 +465,25 @@ class SegmentorCA(nn.Module):
         # 8 ->16
         self.up5 = up_conv(1024, 512)
         self.upconv5 = conv_block(1024, 512)
-        self.att5 = BreathWiseCrossAttention(embed_dim=512, num_heads=4, channel_S=512, channel_Y=1024)
+        self.att5 = BreathWiseCrossAttention(embed_dim=512,
+                                             num_heads=4,
+                                             channel_S=512,
+                                             channel_Y=1024)
 
         # 16 -> 32
         self.up4 = up_conv(512, 256)
         self.upconv4 = conv_block(512, 256)
-        self.att4 = BreathWiseCrossAttention(embed_dim=256, num_heads=4, channel_S=256, channel_Y=512)
+        self.att4 = BreathWiseCrossAttention(embed_dim=256,
+                                             num_heads=4,
+                                             channel_S=256,
+                                             channel_Y=512)
         # 32-> 64
         self.up3 = up_conv(256, 128)
         self.upconv3 = conv_block(256, 128)
-        self.att3 = BreathWiseCrossAttention(embed_dim=128, num_heads=4, channel_S=128, channel_Y=256)
+        self.att3 = BreathWiseCrossAttention(embed_dim=128,
+                                             num_heads=4,
+                                             channel_S=128,
+                                             channel_Y=256)
 
         # 64 -> 128
         self.up2 = up_conv(128, 64)
@@ -526,43 +491,38 @@ class SegmentorCA(nn.Module):
         self.att2 = BreathWiseCrossAttention(embed_dim=64, num_heads=4, channel_S=64, channel_Y=128)
 
         # 64 channel to 1
-        self.final_conv = nn.Conv2d(64,
-                                    num_cls,
-                                    kernel_size=1,
-                                    stride=1,
-                                    padding=0,
-                                    bias=True)
+        self.final_conv = nn.Conv2d(64, num_cls, kernel_size=1, stride=1, padding=0, bias=True)
         self.seg_act = nn.Sigmoid()
 
     def forward(self, lat_feat, concat_feats):
         # channels: 64, 128, 256, 512
         concat1, concat2, concat3, concat4 = concat_feats
         # lat_feat: 1024,8,8
-        
+
         cross1 = self.att5(concat4, lat_feat)
         x = self.up5(lat_feat)
-        x = self.upconv5(torch.cat([cross1, x], dim=1)) # should be 512, 16, 16
+        x = self.upconv5(torch.cat([cross1, x], dim=1))  # should be 512, 16, 16
         #print(x.shape)
 
         cross2 = self.att4(concat3, x)
         #print("cross2 shape", cross2.shape)
         x = self.up4(x)
-        x = self.upconv4(torch.cat([cross2, x], dim=1)) # should be 256, 32, 32
+        x = self.upconv4(torch.cat([cross2, x], dim=1))  # should be 256, 32, 32
         #print(x.shape)
 
         cross3 = self.att3(concat2, x)
         #print("cross3 shape", cross3.shape)
         x = self.up3(x)
-        x = self.upconv3(torch.cat([cross3, x], dim=1)) # should be 128, 64, 64
+        x = self.upconv3(torch.cat([cross3, x], dim=1))  # should be 128, 64, 64
         #print(x.shape)
 
         cross4 = self.att2(concat1, x)
         #print("cross4 shape", cross4.shape)
         x = self.up2(x)
-        x = self.upconv2(torch.cat([cross4, x], dim=1)) # should be 64, 128, 128
+        x = self.upconv2(torch.cat([cross4, x], dim=1))  # should be 64, 128, 128
         #print(x.shape)
 
-        x = self.final_conv(x) # should be 1, 128, 128
+        x = self.final_conv(x)  # should be 1, 128, 128
 
         # HANDLE this when calculating loss
         # segmentation map, sigmoid maps to [0,1]
@@ -570,13 +530,20 @@ class SegmentorCA(nn.Module):
 
         return x
 
+
 class MTUNet(nn.Module):
     # Multi-task Transformer U-Net
 
-    def __init__(self, num_cls=1, cross_att = False, recon=True): #TODO: check aross_att
+    def __init__(self,
+                 num_cls=1,
+                 cross_att=False,
+                 recon=True,
+                 transformer=True):  #TODO: check aross_att
         super(MTUNet, self).__init__()
         self.encoder = Encoder()
-        self.transformer = Transformer()
+        self.transformer = transformer
+        if transformer:
+            self.transformer = Transformer()
         self.recon = recon
         if recon:
             self.decoder = Decoder()
@@ -590,10 +557,12 @@ class MTUNet(nn.Module):
 
     def forward(self, x):
         lat_feat, concat_feats = self.encoder(x)
-        B, C, H, W  = lat_feat.shape
-        lat_feat = self.transformer(lat_feat)
-        lat_feat = self.post_norm(lat_feat)
-        lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
+        B, C, H, W = lat_feat.shape
+        if self.transformer:
+            lat_feat = self.transformer(lat_feat)
+            lat_feat = self.post_norm(lat_feat)
+            lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
+
         seg_map = self.segmentor(lat_feat, concat_feats)
         if self.recon:
             rec_img = self.decoder(lat_feat)
