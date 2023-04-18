@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 
-from breath_wise_cross_att import *
+from breath_wise_cross_att import BreathWiseCrossAttention, BreathWise
 from BWCSA import *
 '''
 @ author: Simon Zhou, Xudong Liu
@@ -772,7 +772,7 @@ class MTUNet(nn.Module):
         if cross_att:
             self.segmentor = SegmentorCA(num_cls)
         else:
-            self.segmentor = Segmentor(num_cls, att_type='bwcsa')
+            self.segmentor = Segmentor(num_cls, att_type='att_unet')
         
         self.recon = recon
         if recon:
@@ -783,6 +783,37 @@ class MTUNet(nn.Module):
         B, C, H, W  = lat_feat.shape
         lat_feat = self.transformer(lat_feat)
         lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
+        seg_map = self.segmentor(lat_feat, concat_feats)
+        if self.recon:
+            rec_img = self.decoder(recon_feat)
+        else:
+            rec_img = None
+        return seg_map, rec_img
+
+class MTUNet_noTrans(nn.Module):
+    # Multi-task Transformer U-Net
+
+    def __init__(self, num_cls=1, cross_att = False, recon = True): #TODO: check aross_att
+        super(MTUNet, self).__init__()
+        self.encoder = Encoder()
+        self.transformer = Transformer()
+        self.lat_conv = nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1)
+        # whether we want to use cross attention module
+        if cross_att:
+            self.segmentor = SegmentorCA(num_cls)
+        else:
+            self.segmentor = Segmentor(num_cls, att_type='att_unet')
+        
+        self.recon = recon
+        if recon:
+            self.decoder = Decoder()
+
+    def forward(self, x):
+        lat_feat, recon_feat, concat_feats = self.encoder(x)
+        B, C, H, W  = lat_feat.shape
+        #lat_feat = self.transformer(lat_feat)
+        #lat_feat = lat_feat.transpose(1, 2).contiguous().view(B, -1, H, W)
+        lat_feat = self.lat_conv(lat_feat)
         seg_map = self.segmentor(lat_feat, concat_feats)
         if self.recon:
             rec_img = self.decoder(recon_feat)
