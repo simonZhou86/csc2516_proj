@@ -9,20 +9,11 @@ TODO List
 - [x] training and test scripts
 - [x] baseline model(s)
 
-After run some experiments:
-
-- [ ] change current hard-code preceptual loss implementation to LPIPS?
 
 ## Usage
 
-Train model (Local test)
+Train model
 
-change this line in dataset.py to reduce the time for local test
-
-```python
-Train: self.imgs/masks = self.imgs[:self.imgs.shape[0] * 1 // 1000]
-Val: self.imgs/masks = self.imgs[self.imgs.shape[0] * 1 // 1000:self.imgs.shape[0] * 2 // 1000]
-```
-
-
-python main.py --train --dev --viz_wandb (our team name) (-- cross_att)
+```shell
+python main.py --train --viz_wandb (our team name) --c1 0.7 --c2 0.3 --cross_att
+'''
