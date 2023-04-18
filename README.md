@@ -1,14 +1,6 @@
-# csc2516_proj
+# CSC2516 Course Project
 
-TODO List
-
-- [x] Preprocessing
-- [x] Loss function: Dice loss implementation
-- [x] Transformer model, decoder
-- [x] Attention mechanism revisit and revise
-- [x] training and test scripts
-- [x] baseline model(s)
-
+MTSegFormer: A Multitask Learning Approach for Brain Tumor Segmentation using Transformer
 
 ## Usage
 
