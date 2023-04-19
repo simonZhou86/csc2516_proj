@@ -10,4 +10,4 @@ Train model
 python main.py --train --viz_wandb (our team name) --c1 0.7 --c2 0.3 --cross_att
 ```
 
-This repo contains all code files for this project, will clean up & make it clear later
+This repo contains all code files for this project for now, will clean up & make it clear later
