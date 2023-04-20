@@ -95,7 +95,7 @@ def save_object(ob, filename):
 
 
 if __name__ == "__main__":
-    root_dir = "Z:/Datasets/MedicalImages/BrainData/MICCAI_BraTS_2019_Data_Training"
+    root_dir = "./miccai_2019_unzip/MICCAI_BraTS_2019_Data_Training"
     groups = ["LGG", "HGG"]
     #ind = 1
 
@@ -105,35 +105,48 @@ if __name__ == "__main__":
     labels = []
     pIDs = []
     ind = 1
+    total_non_zero = 0
+
+    imgs_resize = torch.empty(0,1,128,128).cuda()
+    masks_resize = torch.empty(0,1,128,128).cuda()
+
     for group in groups:
         group_path = os.path.join(root_dir, group)
         patient_list = os.listdir(group_path)
         for patient in patient_list:
+            print(patient)
             patient_path = os.path.join(group_path, patient)
             flair_img, msk = BraTS_Patient_Loader(patient_path)
             #flair_img_eq = exposure.equalize_hist(flair_img)
             #msk = refine_BraTS_seg(msk)
             msk = BraTS_seg_to_binary(msk) # forming the whole tumors
             #img = flair_img_eq*msk
+            img = torch.from_numpy(flair_img).cuda()
+            mask = torch.from_numpy(msk).cuda()
+            del flair_img, msk
+            assert img.shape == mask.shape, "somthing is wrong"
+            for i in range(img.shape[-1]):
+              if torch.any(mask[:,:,i]) == False:
+                continue
+              else:
+                temp_slice_pair = torch.cat((img[:,:,i].unsqueeze(0).unsqueeze(0), mask[:,:,i].unsqueeze(0).unsqueeze(0)), dim = 1)
+                assert temp_slice_pair.shape == (1,2,240,240)
+                temp_slice_pair = resize_pair(temp_slice_pair)
+                imgs_resize = torch.cat((imgs_resize, temp_slice_pair[:,0,:,:].unsqueeze(1)), dim = 0)
+                masks_resize = torch.cat((masks_resize, temp_slice_pair[:,1,:,:].unsqueeze(1)), dim = 0)
 
             #ROIs.append(flair_img*msk)
-            masks.append(msk)
-            imgs.append(flair_img)
-            if group == "LGG":
-                labels.append(0)
-            elif group == "HGG":
-                labels.append(1)
-            pIDs.append(patient)
+            # masks.append(msk)
+            # imgs.append(flair_img)
+            # if group == "LGG":
+            #     labels.append(0)
+            # elif group == "HGG":
+            #     labels.append(1)
+            # pIDs.append(patient)
             if ind%50 == 0:
                 print("working on patinet", ind)
             ind += 1
-    if len(labels) != len(imgs):
-        print("missing label or image")
-    
-    #print("pass")
-    #sys.exit()
-    #save_object(ROIs, "Z:/Simon/data/BraTS/imgs_2516proj.p")
-    save_object(imgs, "Z:/Simon/data/BraTS/imgs_2516proj.p")
-    save_object(labels, "Z:/Simon/data/BraTS/label_2516proj.p")
-    save_object(masks, "Z:/Simon/data/BraTS/mask_2516proj.p")
-    #save_object(pIDs, "Z:/Simon/data/BraTS/LGG_mask_2516proj.p")
+        # if len(labels) != len(imgs):
+        #     print("missing label or image")
+            del img, mask
+     
